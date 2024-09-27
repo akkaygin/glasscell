@@ -38,14 +38,14 @@ module alu2(
     endcase
   end
 
-  always_comb begin
+  always_comb begin : NEGMagic
     logic NEGMagic1;
     NEGMagic1 = ((Operation == 0) && (Operand1[31] == Operand2[31])) // ADD
              || ((Operation == 1) && (Operand1[31] != Operand2[31]));// SUB
     FlagsImm[1] = ResImm[31] ^ ((Operand1[31] != ResImm[31]) && NEGMagic1);
   end
 
-  always_comb begin
+  always_comb begin : OVFMagic
     logic OVFMagic1;
     OVFMagic1 = ((Operation == 0) && (Operand1[31] == Operand2[31])) // ADD
              || ((Operation == 1) && (Operand1[31] != Operand2[31])) // SUB

@@ -2,6 +2,7 @@
 #include <verilated_vcd_c.h>
 
 #include "Vsol32core.h"
+#include "Vsol32core___024root.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,24 +20,42 @@ typedef struct {
   float radius;
 } Circle;
 
-void DrawTextRec(Font font, const char *text, Rectangle position, Color tint) {
+void DrawTextRec(Font font, const char *text, Rectangle position, bool centered, Color tint) {
   Vector2 textSize = MeasureTextEx(font, text, position.height, 0);
 
-  float calcdw = 0;
-  if (textSize.x < position.width) {
-    float extraSpace = position.width - textSize.x;
-    int textLength = strlen(text);
-    if (textLength > 1) {
-        calcdw = extraSpace / (textLength - 1);
-    }
-  }
+  if(centered) {
+    float centeredX = position.x + (position.width - textSize.x) / 2;
+    float centeredY = position.y + (position.height - textSize.y) / 2;
 
-  DrawTextEx(font, text, {position.x, position.y}, position.height, calcdw, tint);
+    DrawTextEx(font, text, {centeredX, centeredY}, position.height, 0, tint);
+  } else {
+
+    float calcdw = 0;
+    if (textSize.x < position.width) {
+      float extraSpace = position.width - textSize.x;
+      int textLength = strlen(text);
+      if (textLength > 1) {
+          calcdw = extraSpace / (textLength - 1);
+      }
+    }
+
+    DrawTextEx(font, text, {position.x, position.y}, position.height, calcdw, tint);
+  }
 }
 /* End of Raylib Extensions */
 
 Vsol32core* glasscell;
 VerilatedVcdC* tfp;
+
+nat tc = 0;
+bool StepMode = true;
+bool Step = false;
+
+Font BMTTF;
+int BMTTFSpacing = -2;
+Vector2 MeasuredFontDim;
+
+MouseCursor Cursor;
 
 void pretick() {
   glasscell->eval();
@@ -58,8 +77,8 @@ void tick(int tc) {
 }
 
 nat MemoryNAT32[] = {
-  0x100000F0, 0x100000F0, 0x100000F0, 0x100000F0,
-  0xFFFFFFFF, 0x00000000, 0x00000000, 0x00000000,
+  0x11000100, 0x11000100, 0x11000100, 0x11000100,
+  0x00000000, 0x00000005, 0x00000006, 0x00000007,
   0x00000000, 0x00000000, 0x00000000, 0x00000000,
   0x00000000, 0x00000000, 0x00000000, 0x00000000,
   0x00000000, 0x00000000, 0x00000000, 0x00000000,
@@ -73,15 +92,14 @@ nat MemoryNAT32[] = {
 
 uint8_t* Memory = (uint8_t*)MemoryNAT32;
 
-// Accesses are big endian
 nat ReadMemory(nat Address, nat Width) {
-  if(Address < sizeof(Memory)) {
+  if(Address < 4*sizeof(MemoryNAT32)/sizeof(MemoryNAT32[0])) {
     switch(Width)
     {
     case 0: return Memory[Address];
-    case 1: return Memory[Address + 1] | (Memory[Address] << 8);
-    case 2: return Memory[Address + 3] | (Memory[Address + 2] << 8)
-                | (Memory[Address + 1] << 16) | (Memory[Address] << 24);
+    case 1: return Memory[Address] | (Memory[Address + 1] << 8);
+    case 2: return Memory[Address] | (Memory[Address + 1] << 8)
+                | (Memory[Address + 2] << 16) | (Memory[Address + 3] << 24);
     default: return 0;
     }
   } else {
@@ -90,40 +108,136 @@ nat ReadMemory(nat Address, nat Width) {
 }
 
 void WriteMemory(nat Address, nat Data, nat Width) {
-  if(Address < sizeof(Memory)) {
+  if(Address < 4*sizeof(MemoryNAT32)/sizeof(MemoryNAT32[0])) {
     switch(Width)
     {
     case 0:
         Memory[Address] = Data & 0xFF;
         break;
     case 1:
-        Memory[Address + 1] = Data & 0xFF;
-        Memory[Address] = (Data >> 8) & 0xFF;
+        Memory[Address] = Data & 0xFF;
+        Memory[Address + 1] = (Data >> 8) & 0xFF;
         break;
     case 2:
-        Memory[Address + 3] = Data & 0xFF;
-        Memory[Address + 2] = (Data >> 8) & 0xFF;
-        Memory[Address + 1] = (Data >> 16) & 0xFF;
-        Memory[Address] = (Data >> 24) & 0xFF;
+        Memory[Address] = Data & 0xFF;
+        Memory[Address + 1] = (Data >> 8) & 0xFF;
+        Memory[Address + 2] = (Data >> 16) & 0xFF;
+        Memory[Address + 3] = (Data >> 24) & 0xFF;
         break;
     }
   }
 }
 
 /* Blinkenlights */
-void DrawBlinkenlights(uint32_t Data, nat Width, Rectangle Bounds) {
+void DrawBlinkenlights(uint32_t Data, nat Width, Rectangle Bounds, Color tintA, Color tintB) {
   for(nat i = 0; i < Width; i++) {
     if((Data >> (Width - 1 - i)) & 1)
       DrawRectangle(Bounds.x + (Bounds.width * i / Width),
-        Bounds.y, Bounds.width / Width, Bounds.height, RED);
+        Bounds.y, Bounds.width / Width, Bounds.height, tintA);
     else
       DrawRectangle(Bounds.x + (Bounds.width * i / Width),
-        Bounds.y, Bounds.width / Width, Bounds.height, WHITE);
+        Bounds.y, Bounds.width / Width, Bounds.height, tintB);
     
     DrawRectangleLinesEx({Bounds.x + (Bounds.width * i / Width),
-      Bounds.y, Bounds.width / Width, Bounds.height}, 1, {0x20, 0x20, 0x20, 0xFF});
+      Bounds.y, Bounds.width / Width, Bounds.height}, 1.0f, {0x20, 0x20, 0x20, 0xFF});
   }
 }
+
+void DrawSRegisterBlinkenlights(Rectangle Bounds) {
+  for(nat i = 0; i < 16; i++) {
+    DrawBlinkenlights(glasscell->rootp->sol32core__DOT__SupervisorRegisterBank__DOT__RegisterBank[i],
+        32, {Bounds.x, Bounds.y+Bounds.height*i/16, Bounds.width, Bounds.height/16}, RED, WHITE);
+  }
+}
+
+void DrawURegisterBlinkenlights(Rectangle Bounds) {
+  for(nat i = 0; i < 16; i++) {
+    DrawBlinkenlights(glasscell->rootp->sol32core__DOT__UserRegisterBank__DOT__RegisterBank[i],
+        32, {Bounds.x, Bounds.y+Bounds.height*i/16, Bounds.width, Bounds.height/16}, RED, WHITE);
+  }
+}
+
+/* Button */
+bool DrawButton(Rectangle Bounds, Color tintA, Color tintB, Color tintC) {
+  if(CheckCollisionPointRec(GetMousePosition(), Bounds)) {
+    Cursor = MOUSE_CURSOR_ARROW;
+
+    if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+      DrawRectangleRec(Bounds, tintC);
+      return true;
+    } else {
+      DrawRectangleRec(Bounds, tintB);
+      return false;
+    }
+  } else {
+    DrawRectangleRec(Bounds, tintA);
+    return false;
+  }
+}
+
+/* Switches */
+bool DrawSwitchH(Rectangle Bounds, bool state, Color tint) {
+  DrawRectangleLines(Bounds.x, Bounds.y, Bounds.width, Bounds.height, tint);
+
+  if(state) {
+    Bounds = {Bounds.x + Bounds.width / 2, Bounds.y, Bounds.width / 2, Bounds.height};
+  } else {
+    Bounds = {Bounds.x, Bounds.y, Bounds.width / 2, Bounds.height};
+  }
+
+  if(CheckCollisionPointRec(GetMousePosition(), Bounds)) {
+    Cursor = MOUSE_CURSOR_ARROW;
+
+    if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+      state = !state;
+    }
+  }
+
+  DrawRectangleRec(Bounds, tint);
+
+  return state;
+}
+
+bool DrawSwitchV(Rectangle Bounds, bool state, Color tint) {
+  DrawRectangleLines(Bounds.x, Bounds.y, Bounds.width, Bounds.height, tint);
+
+  if(state) {
+    Bounds = {Bounds.x, Bounds.y + Bounds.height / 2, Bounds.width, Bounds.height / 2};
+  } else {
+    Bounds = {Bounds.x, Bounds.y, Bounds.width, Bounds.height / 2};
+  }
+
+  if(CheckCollisionPointRec(GetMousePosition(), Bounds)) {
+    Cursor = MOUSE_CURSOR_ARROW;
+
+    if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+      state = !state;
+    }
+  }
+
+  DrawRectangleRec(Bounds, tint);
+
+  return state;
+}
+
+bool DrawSwitchT(Rectangle Bounds, bool state, Color tint) {
+  DrawRectangleLines(Bounds.x, Bounds.y, Bounds.width, Bounds.height, tint);
+
+  if(state) {
+    DrawRectangleRec(Bounds, tint);
+  }
+
+  if(CheckCollisionPointRec(GetMousePosition(), Bounds)) {
+    Cursor = MOUSE_CURSOR_ARROW;
+
+    if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+      state = !state;
+    }
+  }
+
+  return state;
+}
+/* End of Switches */
 
 int main(int argc, char** argv) {
   Verilated::commandArgs(argc, argv);
@@ -134,10 +248,6 @@ int main(int argc, char** argv) {
   glasscell->trace(tfp, 99);
   tfp->open("trace.vcd");
 
-  nat tc = 0;
-  bool StepMode = true;
-  bool Step = false;
-
   glasscell->Reset = 1;
   glasscell->Instruction = 0;
   tick(++tc);
@@ -145,41 +255,75 @@ int main(int argc, char** argv) {
   glasscell->Reset = 0;
 
   SetConfigFlags(FLAG_MSAA_4X_HINT); 
-  InitWindow(1024, 960, "glasscell Simulator");
-  SetTargetFPS(60);
+  InitWindow(1024, 960, "sol32 Simulator");
+  SetTargetFPS(15);
+
+  BMTTF = LoadFontEx("BerkeleyMono.ttf", 24, 0, 250);
+  SetTextLineSpacing(16);
+  SetTextureFilter(BMTTF.texture, TEXTURE_FILTER_BILINEAR);
+  MeasuredFontDim = MeasureTextEx(BMTTF, "0", BMTTF.baseSize, BMTTFSpacing);
+
+  bool Reset = false;
 
   while(!WindowShouldClose()) {
-    if(!(tc < 32)) {
-      tfp->close();
-      break;
+    pretick();
+    
+    if(Reset) {
+      glasscell->Reset = 1;
+    } else {
+      glasscell->Reset = 0;
     }
 
     if(StepMode) {
       if(Step) {
-        pretick();
-        glasscell->Instruction = ReadMemory(glasscell->InstructionPointer, 3);
-        glasscell->DataIn = ReadMemory(glasscell->MemoryAddress, 3);
+        glasscell->Instruction = ReadMemory(glasscell->InstructionPointer, 2);
+        glasscell->DataIn = ReadMemory(glasscell->MemoryAddress, 2);
         if(glasscell->WriteEnable) {
-          WriteMemory(glasscell->MemoryAddress, glasscell->DataOut, 3);
+          WriteMemory(glasscell->MemoryAddress, glasscell->DataOut, 2);
         }
         tick(++tc);
-
+        
         Step = false;
       }
     } else {
-      pretick();
-      glasscell->Instruction = ReadMemory(glasscell->InstructionPointer, 3);
-      glasscell->DataIn = ReadMemory(glasscell->MemoryAddress, 3);
+      glasscell->Instruction = ReadMemory(glasscell->InstructionPointer, 2);
+      glasscell->DataIn = ReadMemory(glasscell->MemoryAddress, 2);
       if(glasscell->WriteEnable) {
-        WriteMemory(glasscell->MemoryAddress, glasscell->DataOut, 3);
+        WriteMemory(glasscell->MemoryAddress, glasscell->DataOut, 2);
       }
       tick(++tc);
     }
 
     BeginDrawing();
     ClearBackground({0x0F, 0x0F, 0x0F, 0xFF});
+    Cursor = MOUSE_CURSOR_DEFAULT;
 
+    DrawTextRec(BMTTF, "Instruction Pointer", {20, 10, 16*20, 20}, false, WHITE);
+    DrawBlinkenlights(glasscell->InstructionPointer >> 16, 16, {20, 30, 16*20, 10}, RED, WHITE);
+    DrawBlinkenlights(glasscell->InstructionPointer & 0xFFFF, 16, {20, 40, 16*20, 10}, RED, WHITE);
 
+    DrawTextRec(BMTTF, "Instruction", {20, 60, 16*20, 20}, false, WHITE);
+    DrawBlinkenlights(ReadMemory(glasscell->InstructionPointer, 2) >> 16, 16, {20, 80, 16*20, 10}, RED, WHITE);
+    DrawBlinkenlights(ReadMemory(glasscell->InstructionPointer, 2) & 0xFFFF, 16, {20, 90, 16*20, 10}, RED, WHITE);
+
+    DrawTextRec(BMTTF, "Supervisor Register Set", {20, 110, 16*20, 20}, false, WHITE);
+    DrawSRegisterBlinkenlights({20, 130, 320, 10*16});
+
+    DrawTextRec(BMTTF, "Run / Step", {360, 10, 120, 20}, false, WHITE);
+    StepMode = DrawSwitchH({360, 30, 120, 20}, StepMode, WHITE);
+
+    DrawTextRec(BMTTF, "Step", {360, 60, 120, 20}, true, WHITE);
+    if(StepMode) {
+      if(DrawButton({360, 80, 120, 20}, WHITE, RED, BLACK))
+        Step = true;
+    } else {
+      DrawRectangleRec({360, 80, 120, 20}, {0xA0, 0xA0, 0xA0, 0xFF});
+    }
+
+    DrawTextRec(BMTTF, "Reset", {360, 110, 120, 20}, true, WHITE);
+    Reset = !DrawSwitchT({360, 130, 120, 20}, !Reset, WHITE);
+
+    SetMouseCursor(Cursor);
 
     EndDrawing();
   }

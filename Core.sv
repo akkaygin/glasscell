@@ -97,7 +97,6 @@ module sol32core(
 
   logic[31:0] Source1;
   logic[31:0] Source2;
-  logic[31:0] Operand2;
   logic[31:0] Result;
   logic[3:0] MinInstr;
 
@@ -135,7 +134,7 @@ module sol32core(
   alu2 ALU2(
     MinInstr,
     Source1,
-    Operand2,
+    Source2,
     ALU2Flags,
     Result_ALU2
   );
