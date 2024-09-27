@@ -1,0 +1,1 @@
+sol32 glasscell is a single core simulator and debugging frontend
