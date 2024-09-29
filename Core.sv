@@ -168,7 +168,7 @@ module sol32core(
   logic[31:0] CompSource2;
   logic Result_COMP;
   comparator Comparator(
-    MinInstr,
+    Instruction[3:0],
     ALUFlags,
     CompSource1,
     CompSource2,

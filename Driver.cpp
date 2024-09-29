@@ -57,12 +57,9 @@ Vector2 MeasuredFontDim;
 
 MouseCursor Cursor;
 
-void pretick() {
+void tick() {
+  ++tc;
   glasscell->eval();
-}
-
-void tick(int tc) {
-  //tb->eval();
   tfp->dump(tc*10-2);
   
   glasscell->Clock = 1;
@@ -77,14 +74,9 @@ void tick(int tc) {
 }
 
 nat MemoryNAT32[] = {
-  0x11000100, 0x11000100, 0x11000100, 0x11000100,
-  0xF00FF0C0, 0x00000005, 0x00000006, 0x00000007,
-  0x00000000, 0x00000000, 0x00000000, 0x00000000,
-  0x00000000, 0x00000000, 0x00000000, 0x00000000,
-  0x00000000, 0x00000000, 0x00000000, 0x00000000,
-  0x00000000, 0x00000000, 0x00000000, 0x00000000,
-  0x00000000, 0x00000000, 0x00000000, 0x00000000,
-  0x00000000, 0x00000000, 0x00000000, 0x00000000,
+  0x20000F00, // add r2 r0 r0 15
+  0x11000100, // add r1 r1 r0 1
+  0xF12FFCC1, // j-4 r1 != r2
   0x00000000, 0x00000000, 0x00000000, 0x00000000,
   0x00000000, 0x00000000, 0x00000000, 0x00000000,
   0x00000000, 0x00000000, 0x00000000, 0x00000000,
@@ -250,12 +242,10 @@ int main(int argc, char** argv) {
 
   glasscell->Reset = 1;
   glasscell->Instruction = 0;
-  tick(++tc);
-  tick(++tc);
+  tick();
+  tick();
   glasscell->Reset = 0;
   glasscell->Instruction = ReadMemory(0, 2);
-  pretick();
-  pretick();
 
   SetConfigFlags(FLAG_MSAA_4X_HINT); 
   InitWindow(1024, 960, "sol32 Simulator");
@@ -277,26 +267,22 @@ int main(int argc, char** argv) {
 
     if(StepMode) {
       if(Step) {
-        pretick();
-
         glasscell->Instruction = ReadMemory(glasscell->InstructionPointer, 2);
         glasscell->DataIn = ReadMemory(glasscell->MemoryAddress, 2);
         if(glasscell->WriteEnable) {
           WriteMemory(glasscell->MemoryAddress, glasscell->DataOut, 2);
         }
-        tick(++tc);
+        tick();
         
         Step = false;
       }
     } else {
-      pretick();
-
       glasscell->Instruction = ReadMemory(glasscell->InstructionPointer, 2);
       glasscell->DataIn = ReadMemory(glasscell->MemoryAddress, 2);
       if(glasscell->WriteEnable) {
         WriteMemory(glasscell->MemoryAddress, glasscell->DataOut, 2);
       }
-      tick(++tc);
+      tick();
     }
 
     BeginDrawing();
