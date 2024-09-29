@@ -47,9 +47,9 @@ void DrawTextRec(Font font, const char *text, Rectangle position, bool centered,
 Vsol32core* glasscell;
 VerilatedVcdC* tfp;
 
-nat tc = 0;
+nat tc = 1;
 bool StepMode = true;
-bool Step = false;
+nat StepsRemaining = 0;
 
 Font BMTTF;
 int BMTTFSpacing = -2;
@@ -61,22 +61,20 @@ void tick() {
   ++tc;
   glasscell->eval();
   tfp->dump(tc*10-2);
-  
+
   glasscell->Clock = 1;
   glasscell->eval();
   tfp->dump(tc*10);
-  
+
   glasscell->Clock = 0;
   glasscell->eval();
   tfp->dump(tc*10+5);
-
-  tfp->flush();
 }
 
 nat MemoryNAT32[] = {
   0x20000F00, // add r2 r0 r0 15
   0x11000100, // add r1 r1 r0 1
-  0xF12FFCC1, // j-4 r1 != r2
+  0xF12FFFC1, // j-1 r1 != r2
   0x00000000, 0x00000000, 0x00000000, 0x00000000,
   0x00000000, 0x00000000, 0x00000000, 0x00000000,
   0x00000000, 0x00000000, 0x00000000, 0x00000000,
@@ -150,12 +148,11 @@ void DrawURegisterBlinkenlights(Rectangle Bounds) {
 }
 
 /* Button */
-bool DrawButton(Rectangle Bounds, Color tintA, Color tintB, Color tintC) {
+bool DrawButton(Rectangle Bounds, Color tintA, Color tintB) {
   if(CheckCollisionPointRec(GetMousePosition(), Bounds)) {
     Cursor = MOUSE_CURSOR_ARROW;
 
     if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-      DrawRectangleRec(Bounds, tintC);
       return true;
     } else {
       DrawRectangleRec(Bounds, tintB);
@@ -231,6 +228,9 @@ bool DrawSwitchT(Rectangle Bounds, bool state, Color tint) {
 }
 /* End of Switches */
 
+nat sw = 1024;
+nat sh = 960;
+
 int main(int argc, char** argv) {
   Verilated::commandArgs(argc, argv);
   glasscell = new Vsol32core;
@@ -240,16 +240,15 @@ int main(int argc, char** argv) {
   glasscell->trace(tfp, 99);
   tfp->open("trace.vcd");
 
+  glasscell->Instruction = ReadMemory(glasscell->InstructionPointer, 2);
   glasscell->Reset = 1;
-  glasscell->Instruction = 0;
   tick();
-  tick();
-  glasscell->Reset = 0;
-  glasscell->Instruction = ReadMemory(0, 2);
 
   SetConfigFlags(FLAG_MSAA_4X_HINT); 
-  InitWindow(1024, 960, "sol32 Simulator");
-  SetTargetFPS(15);
+  InitWindow(sw, sh, "sol32 Simulator");
+  SetTargetFPS(15); // throttles cpu sim to XHz
+  ShowCursor();
+  SetWindowState(FLAG_WINDOW_UNDECORATED);
 
   BMTTF = LoadFontEx("BerkeleyMono.ttf", 24, 0, 250);
   SetTextLineSpacing(16);
@@ -258,15 +257,15 @@ int main(int argc, char** argv) {
 
   bool Reset = false;
 
-  while(!WindowShouldClose()) {    
-    if(Reset) {
-      glasscell->Reset = 1;
-    } else {
-      glasscell->Reset = 0;
-    }
-
+  while(!WindowShouldClose()) {
     if(StepMode) {
-      if(Step) {
+      while(StepsRemaining > 0) {
+        if(Reset) {
+          glasscell->Reset = 1;
+        } else {
+          glasscell->Reset = 0;
+        }
+
         glasscell->Instruction = ReadMemory(glasscell->InstructionPointer, 2);
         glasscell->DataIn = ReadMemory(glasscell->MemoryAddress, 2);
         if(glasscell->WriteEnable) {
@@ -274,9 +273,15 @@ int main(int argc, char** argv) {
         }
         tick();
         
-        Step = false;
+        StepsRemaining = StepsRemaining - 1;
       }
     } else {
+      if(Reset) {
+        glasscell->Reset = 1;
+      } else {
+        glasscell->Reset = 0;
+      }
+
       glasscell->Instruction = ReadMemory(glasscell->InstructionPointer, 2);
       glasscell->DataIn = ReadMemory(glasscell->MemoryAddress, 2);
       if(glasscell->WriteEnable) {
@@ -294,29 +299,30 @@ int main(int argc, char** argv) {
     DrawBlinkenlights(glasscell->InstructionPointer & 0xFFFF, 16, {20, 40, 16*20, 10}, RED, WHITE);
 
     DrawTextRec(BMTTF, "Instruction", {20, 60, 16*20, 20}, false, WHITE);
-    DrawBlinkenlights(ReadMemory(glasscell->InstructionPointer, 2) >> 16, 16, {20, 80, 16*20, 10}, RED, WHITE);
-    DrawBlinkenlights(ReadMemory(glasscell->InstructionPointer, 2) & 0xFFFF, 16, {20, 90, 16*20, 10}, RED, WHITE);
+    DrawBlinkenlights(glasscell->Instruction >> 16, 16, {20, 80, 16*20, 10}, RED, WHITE);
+    DrawBlinkenlights(glasscell->Instruction & 0xFFFF, 16, {20, 90, 16*20, 10}, RED, WHITE);
 
-    DrawTextRec(BMTTF, "Supervisor Register Set", {20, 110, 16*20, 20}, false, WHITE);
-    DrawSRegisterBlinkenlights({20, 130, 320, 10*16});
+    DrawTextRec(BMTTF, "Supervisor Register Set", {20, sh-190, 16*20, 20}, false, WHITE);
+    DrawSRegisterBlinkenlights({20, sh-170, 320, 10*16});
 
     DrawTextRec(BMTTF, "Run / Step", {360, 10, 120, 20}, false, WHITE);
     StepMode = DrawSwitchH({360, 30, 120, 20}, StepMode, WHITE);
 
     DrawTextRec(BMTTF, "Step", {360, 60, 120, 20}, true, WHITE);
     if(StepMode) {
-      if(DrawButton({360, 80, 120, 20}, WHITE, RED, BLACK))
-        Step = true;
+      if(DrawButton({360, 80, 60, 20}, WHITE, RED)) StepsRemaining = StepsRemaining + 1;
+      if(DrawButton({420, 80, 30, 20}, {0xD0, 0xD0, 0xD0, 0xFF}, RED)) StepsRemaining = StepsRemaining + 4;
+      if(DrawButton({450, 80, 30, 20}, {0xB0, 0xB0, 0xB0, 0xFF}, RED)) StepsRemaining = StepsRemaining + 16;
+
+      DrawTextRec(BMTTF, "1", {360, 80, 60, 20}, true, BLACK);
+      DrawTextRec(BMTTF, "4", {420, 80, 30, 20}, true, BLACK);
+      DrawTextRec(BMTTF, "16", {450, 80, 30, 20}, true, BLACK);
     } else {
       DrawRectangleRec({360, 80, 120, 20}, {0xA0, 0xA0, 0xA0, 0xFF});
     }
 
     DrawTextRec(BMTTF, "Reset", {360, 110, 120, 20}, true, WHITE);
     Reset = !DrawSwitchT({360, 130, 120, 20}, !Reset, WHITE);
-
-    DrawTextRec(BMTTF, "ALU2 Result", {20, 600, 16*20, 20}, false, WHITE);
-    DrawBlinkenlights(glasscell->rootp->sol32core__DOT__ALU2__DOT__ResImm >> 16, 16, {20, 620, 16*20, 10}, RED, WHITE);
-    DrawBlinkenlights(glasscell->rootp->sol32core__DOT__ALU2__DOT__ResImm & 0xFFFF, 16, {20, 630, 16*20, 10}, RED, WHITE);
 
     SetMouseCursor(Cursor);
     EndDrawing();

@@ -1,4 +1,5 @@
 `default_nettype none
+`timescale 10ps/1ps
 
 module sol32core(
   input Clock,
@@ -22,14 +23,14 @@ module sol32core(
 
   assign Mode = CoreControlRegister[31];
 
-  always_ff@(posedge Clock) begin : IntSVM
+  always_ff@(posedge Clock) begin : Ctr
     if(Interrupt) begin
       CoreControlRegister[31] <= 0;
     end
   end
 
   logic InternalClock;
-  assign InternalClock = Clock;
+  assign InternalClock = Clock && ~CoreControlRegister[0];
 
   logic[3:0] Source1Address;
   logic[3:0] Source2Address;
@@ -106,14 +107,17 @@ module sol32core(
       Embedded = {{22{Instruction[7]}}, Instruction[17:8]} << (Instruction[19:18] << 2);
     end else if(Instruction[6:4] == 3'b001) begin
       Embedded = {{16{Instruction[7]}}, Instruction[23:8]};
-    end else begin
+    end else if(Instruction[6:4] == 3'b100) begin
+      Embedded = {{14{Instruction[7]}}, Instruction[23:8], 2'b00};
+    end begin
       Embedded = {{20{Instruction[7]}}, Instruction[19:8]};
     end
   end
 
   // ALU input muxes for conditional jump
   // can be moved to ALU for better LUT util?
-  always_comb begin : CJInSet
+  // always_ff to clear up the timing diagram
+  always_ff@(posedge Clock) begin : CJInSet
     if(Instruction[6:4] == 3'b100) begin
       MinInstr = 0;
       Source1 = InstructionPointer;
@@ -186,10 +190,10 @@ module sol32core(
       TargetWriteEnable_UR = 0;
     end else begin
       if(Instruction[6:4] == 3'b100) begin
-        TargetWriteEnable_SR = Result_COMP & !CoreControlRegister[31];
+        TargetWriteEnable_SR = Result_COMP & ~CoreControlRegister[31];
         TargetWriteEnable_UR = Result_COMP & CoreControlRegister[31];
       end else begin
-        TargetWriteEnable_SR = !CoreControlRegister[31];
+        TargetWriteEnable_SR = ~CoreControlRegister[31];
         TargetWriteEnable_UR = CoreControlRegister[31];
       end
     end
