@@ -118,12 +118,20 @@ module sol32core(
       MinInstr = 0;
       Source1 = InstructionPointer;
       Source2 = Embedded;
+      
+      CompSource1 = (CoreControlRegister[31] ?
+          Source1Out_UR : Source1Out_SR);
+      CompSource2 = (CoreControlRegister[31] ?
+          Source2Out_UR : Source2Out_SR);
     end else begin
       MinInstr = Instruction[3:0];
       Source1 = (CoreControlRegister[31] ?
           Source1Out_UR : Source1Out_SR);
       Source2 = (CoreControlRegister[31] ?
           Source2Out_UR : Source2Out_SR) + Embedded;
+        
+      CompSource1 = 0;
+      CompSource2 = 0;
     end
   end
 
@@ -156,12 +164,14 @@ module sol32core(
     end
   end
   
+  logic[31:0] CompSource1;
+  logic[31:0] CompSource2;
   logic Result_COMP;
   comparator Comparator(
     MinInstr,
     ALUFlags,
-    Source1,
-    Source2,
+    CompSource1,
+    CompSource2,
     Result_COMP
   );
 

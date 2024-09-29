@@ -78,7 +78,7 @@ void tick(int tc) {
 
 nat MemoryNAT32[] = {
   0x11000100, 0x11000100, 0x11000100, 0x11000100,
-  0x00000000, 0x00000005, 0x00000006, 0x00000007,
+  0xF00FF0C0, 0x00000005, 0x00000006, 0x00000007,
   0x00000000, 0x00000000, 0x00000000, 0x00000000,
   0x00000000, 0x00000000, 0x00000000, 0x00000000,
   0x00000000, 0x00000000, 0x00000000, 0x00000000,
@@ -253,6 +253,9 @@ int main(int argc, char** argv) {
   tick(++tc);
   tick(++tc);
   glasscell->Reset = 0;
+  glasscell->Instruction = ReadMemory(0, 2);
+  pretick();
+  pretick();
 
   SetConfigFlags(FLAG_MSAA_4X_HINT); 
   InitWindow(1024, 960, "sol32 Simulator");
@@ -265,9 +268,7 @@ int main(int argc, char** argv) {
 
   bool Reset = false;
 
-  while(!WindowShouldClose()) {
-    pretick();
-    
+  while(!WindowShouldClose()) {    
     if(Reset) {
       glasscell->Reset = 1;
     } else {
@@ -276,6 +277,8 @@ int main(int argc, char** argv) {
 
     if(StepMode) {
       if(Step) {
+        pretick();
+
         glasscell->Instruction = ReadMemory(glasscell->InstructionPointer, 2);
         glasscell->DataIn = ReadMemory(glasscell->MemoryAddress, 2);
         if(glasscell->WriteEnable) {
@@ -286,6 +289,8 @@ int main(int argc, char** argv) {
         Step = false;
       }
     } else {
+      pretick();
+
       glasscell->Instruction = ReadMemory(glasscell->InstructionPointer, 2);
       glasscell->DataIn = ReadMemory(glasscell->MemoryAddress, 2);
       if(glasscell->WriteEnable) {
@@ -323,8 +328,11 @@ int main(int argc, char** argv) {
     DrawTextRec(BMTTF, "Reset", {360, 110, 120, 20}, true, WHITE);
     Reset = !DrawSwitchT({360, 130, 120, 20}, !Reset, WHITE);
 
-    SetMouseCursor(Cursor);
+    DrawTextRec(BMTTF, "ALU2 Result", {20, 600, 16*20, 20}, false, WHITE);
+    DrawBlinkenlights(glasscell->rootp->sol32core__DOT__ALU2__DOT__ResImm >> 16, 16, {20, 620, 16*20, 10}, RED, WHITE);
+    DrawBlinkenlights(glasscell->rootp->sol32core__DOT__ALU2__DOT__ResImm & 0xFFFF, 16, {20, 630, 16*20, 10}, RED, WHITE);
 
+    SetMouseCursor(Cursor);
     EndDrawing();
   }
 
