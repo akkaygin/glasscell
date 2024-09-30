@@ -104,20 +104,17 @@ module sol32core(
   logic[31:0] Embedded;
   always_comb begin : EmbeddedSESH
     if(Instruction[6:4] == 3'b000) begin
-      Embedded = {{22{Instruction[7]}}, Instruction[17:8]} << (Instruction[19:18] << 2);
+      Embedded = {{22{Instruction[7]}}, Instruction[17:8]} << {Instruction[19:18], 2'b00};
     end else if(Instruction[6:4] == 3'b001) begin
       Embedded = {{16{Instruction[7]}}, Instruction[23:8]};
     end else if(Instruction[6:4] == 3'b100) begin
-      Embedded = {{14{Instruction[7]}}, Instruction[23:8], 2'b00};
-    end begin
+      Embedded = {{14{Instruction[7]}}, Instruction[31:28], Instruction[19:8], 2'b00};
+    end else begin
       Embedded = {{20{Instruction[7]}}, Instruction[19:8]};
     end
   end
 
-  // ALU input muxes for conditional jump
-  // can be moved to ALU for better LUT util?
-  // always_ff to clear up the timing diagram
-  always_ff@(posedge Clock) begin : CJInSet
+  always_comb begin : CJInSet
     if(Instruction[6:4] == 3'b100) begin
       MinInstr = 0;
       Source1 = InstructionPointer;

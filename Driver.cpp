@@ -60,7 +60,7 @@ MouseCursor Cursor;
 void tick() {
   ++tc;
   glasscell->eval();
-  tfp->dump(tc*10-2);
+  //tfp->dump(tc*10-2);
 
   glasscell->Clock = 1;
   glasscell->eval();
@@ -240,10 +240,6 @@ int main(int argc, char** argv) {
   glasscell->trace(tfp, 99);
   tfp->open("trace.vcd");
 
-  glasscell->Instruction = ReadMemory(glasscell->InstructionPointer, 2);
-  glasscell->Reset = 1;
-  tick();
-
   SetConfigFlags(FLAG_MSAA_4X_HINT); 
   InitWindow(sw, sh, "sol32 Simulator");
   SetTargetFPS(15); // throttles cpu sim to XHz
@@ -271,6 +267,7 @@ int main(int argc, char** argv) {
         if(glasscell->WriteEnable) {
           WriteMemory(glasscell->MemoryAddress, glasscell->DataOut, 2);
         }
+
         tick();
         
         StepsRemaining = StepsRemaining - 1;
