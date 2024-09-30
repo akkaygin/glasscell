@@ -242,7 +242,7 @@ int main(int argc, char** argv) {
 
   SetConfigFlags(FLAG_MSAA_4X_HINT); 
   InitWindow(sw, sh, "sol32 Simulator");
-  SetTargetFPS(15); // throttles cpu sim to XHz
+  SetTargetFPS(15);
   ShowCursor();
   SetWindowState(FLAG_WINDOW_UNDECORATED);
 
@@ -254,25 +254,11 @@ int main(int argc, char** argv) {
   bool Reset = false;
 
   while(!WindowShouldClose()) {
-    if(StepMode) {
-      while(StepsRemaining > 0) {
-        if(Reset) {
-          glasscell->Reset = 1;
-        } else {
-          glasscell->Reset = 0;
-        }
+    if(!StepMode) {
+      StepsRemaining = 8000; 
+    }
 
-        glasscell->Instruction = ReadMemory(glasscell->InstructionPointer, 2);
-        glasscell->DataIn = ReadMemory(glasscell->MemoryAddress, 2);
-        if(glasscell->WriteEnable) {
-          WriteMemory(glasscell->MemoryAddress, glasscell->DataOut, 2);
-        }
-
-        tick();
-        
-        StepsRemaining = StepsRemaining - 1;
-      }
-    } else {
+    while(StepsRemaining > 0) {
       if(Reset) {
         glasscell->Reset = 1;
       } else {
@@ -284,7 +270,10 @@ int main(int argc, char** argv) {
       if(glasscell->WriteEnable) {
         WriteMemory(glasscell->MemoryAddress, glasscell->DataOut, 2);
       }
+
       tick();
+      
+      StepsRemaining = StepsRemaining - 1;
     }
 
     BeginDrawing();
@@ -324,7 +313,7 @@ int main(int argc, char** argv) {
     SetMouseCursor(Cursor);
     EndDrawing();
   }
-
+  printf("cyc %d\n", tc);
   tfp->close();
   CloseWindow();
   return 0;
