@@ -104,7 +104,7 @@ module sol32core(
   logic[31:0] Embedded;
   always_comb begin : EmbeddedSESH
     if(Instruction[6:4] == 3'b000) begin
-      Embedded = {{22{Instruction[7]}}, Instruction[17:8]} << {Instruction[19:18], 2'b00};
+      Embedded = {{22{Instruction[7]}}, Instruction[17:8]} << {Instruction[19:18], 3'b000};
     end else if(Instruction[6:4] == 3'b001) begin
       Embedded = {{16{Instruction[7]}}, Instruction[23:8]};
     end else if(Instruction[6:4] == 3'b100) begin
@@ -157,7 +157,7 @@ module sol32core(
     Result_ALU1
   );
 
-  always_comb begin : ALUFlagsSel
+  always_ff@(posedge Clock) begin : ALUFlagsSel
     if(Instruction[6:4] == 3'b000) begin
       ALUFlags = ALU2Flags;
     end else begin

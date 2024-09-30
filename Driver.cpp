@@ -47,7 +47,7 @@ void DrawTextRec(Font font, const char *text, Rectangle position, bool centered,
 Vsol32core* glasscell;
 VerilatedVcdC* tfp;
 
-nat tc = 1;
+nat CycleCount = 0;
 bool StepMode = true;
 nat StepsRemaining = 0;
 
@@ -58,26 +58,30 @@ Vector2 MeasuredFontDim;
 MouseCursor Cursor;
 
 void tick() {
-  ++tc;
+  ++CycleCount;
   glasscell->eval();
-  //tfp->dump(tc*10-2);
+  //tfp->dump(CycleCount*10-2);
 
   glasscell->Clock = 1;
   glasscell->eval();
-  tfp->dump(tc*10);
+  tfp->dump(CycleCount*10);
 
   glasscell->Clock = 0;
   glasscell->eval();
-  tfp->dump(tc*10+5);
+  tfp->dump(CycleCount*10+5);
 }
 
 nat MemoryNAT32[] = {
-  0x20000F00, // add r2 r0 r0 15
-  0x11000100, // add r1 r1 r0 1
-  0xF12FFFC1, // j-1 r1 != r2
-  0x00000000, 0x00000000, 0x00000000, 0x00000000,
-  0x00000000, 0x00000000, 0x00000000, 0x00000000,
-  0x00000000, 0x00000000, 0x00000000, 0x00000000,
+  0x2003FF80, // add r2 r0 r0 0x3FF<<24
+  0x10000100, // add r1 r0 r0 1
+  0x11100000, // add r1 r1 r1
+  0x000001CA, // j+1 crr
+  0xF21FFEC2, // j-2 r2 >= r1
+  0x12000101, // sub r1 r2 r0 1
+  0xF00FFEC0, // j-2 r0 == r0
+  0x00000000,
+  0x00000000,
+  0x00000000,
 };
 
 uint8_t* Memory = (uint8_t*)MemoryNAT32;
@@ -252,26 +256,31 @@ int main(int argc, char** argv) {
   MeasuredFontDim = MeasureTextEx(BMTTF, "0", BMTTF.baseSize, BMTTFSpacing);
 
   bool Reset = false;
+  char CycText[] = "00000000";
 
+  glasscell->Instruction = ReadMemory(glasscell->InstructionPointer, 2);
+  
   while(!WindowShouldClose()) {
     if(!StepMode) {
       StepsRemaining = 8000; 
     }
 
-    while(StepsRemaining > 0) {
-      if(Reset) {
-        glasscell->Reset = 1;
-      } else {
-        glasscell->Reset = 0;
-      }
+    if(Reset) {
+      glasscell->Reset = 1;
+      tick();
+      glasscell->Instruction = ReadMemory(glasscell->InstructionPointer, 2);
+      glasscell->Reset = 0;
+      
+      Reset = false;
+    }
 
+    while(StepsRemaining > 0) {
+      tick();
       glasscell->Instruction = ReadMemory(glasscell->InstructionPointer, 2);
       glasscell->DataIn = ReadMemory(glasscell->MemoryAddress, 2);
       if(glasscell->WriteEnable) {
         WriteMemory(glasscell->MemoryAddress, glasscell->DataOut, 2);
       }
-
-      tick();
       
       StepsRemaining = StepsRemaining - 1;
     }
@@ -291,6 +300,13 @@ int main(int argc, char** argv) {
     DrawTextRec(BMTTF, "Supervisor Register Set", {20, sh-190, 16*20, 20}, false, WHITE);
     DrawSRegisterBlinkenlights({20, sh-170, 320, 10*16});
 
+    snprintf(CycText, 9, "%08X", CycleCount);
+    DrawTextRec(BMTTF, "Cycle Count", {500, 10, 120, 20}, false, WHITE);
+    DrawTextRec(BMTTF, CycText, {500, 30, 120, 20}, false, WHITE);
+
+    DrawTextRec(BMTTF, "VCNZ", {532, 60, 56, 20}, false, WHITE);
+    DrawBlinkenlights(glasscell->rootp->sol32core__DOT__ALUFlags, 4, {530, 80, 60, 20}, GREEN, WHITE);
+
     DrawTextRec(BMTTF, "Run / Step", {360, 10, 120, 20}, false, WHITE);
     StepMode = DrawSwitchH({360, 30, 120, 20}, StepMode, WHITE);
 
@@ -308,12 +324,12 @@ int main(int argc, char** argv) {
     }
 
     DrawTextRec(BMTTF, "Reset", {360, 110, 120, 20}, true, WHITE);
-    Reset = !DrawSwitchT({360, 130, 120, 20}, !Reset, WHITE);
+    Reset = DrawButton({360, 130, 120, 20}, WHITE, RED);
 
     SetMouseCursor(Cursor);
     EndDrawing();
   }
-  printf("cyc %d\n", tc);
+  
   tfp->close();
   CloseWindow();
   return 0;
