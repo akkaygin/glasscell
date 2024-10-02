@@ -5,4 +5,4 @@ all:
 	verilator $(VERILATOR_FLAGS) $(SVFILES) Driver.cpp -o Glasscell --Mdir Build/ --top-module sol32core
 
 run: all
-	./Build/Glasscell
+	LIBGL_ALWAYS_SOFTWARE=1 ./Build/Glasscell
