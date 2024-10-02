@@ -58,28 +58,28 @@ Vector2 MeasuredFontDim;
 MouseCursor Cursor;
 
 void tick() {
+}
+
+void ClockPosedge() {
   ++CycleCount;
   glasscell->eval();
   //tfp->dump(CycleCount*10-2);
 
   glasscell->Clock = 1;
   glasscell->eval();
-  tfp->dump(CycleCount*10);
+  tfp->dump(CycleCount*10);  
+}
 
+void ClockNegedge() {
   glasscell->Clock = 0;
   glasscell->eval();
   tfp->dump(CycleCount*10+5);
 }
 
 nat MemoryNAT32[] = {
-  0x2003FF80, // add r2 r0 r0 0x3FF<<24
-  0x10000100, // add r1 r0 r0 1
-  0x11100000, // add r1 r1 r1
-  0x000001CA, // j+1 crr
-  0xF21FFEC2, // j-2 r2 >= r1
-  0x12000101, // sub r1 r2 r0 1
-  0xF00FFEC0, // j-2 r0 == r0
-  0x00000000,
+  0x10BEEF10, // load
+  0x01000C3A, // wr
+  0x20000C32, // rd
   0x00000000,
   0x00000000,
 };
@@ -92,7 +92,8 @@ nat ReadMemory(nat Address, nat Width) {
     {
     case 0: return Memory[Address];
     case 1: return Memory[Address] | (Memory[Address + 1] << 8);
-    case 2: return Memory[Address] | (Memory[Address + 1] << 8)
+    case 2: printf("RD %08X AT ADDRESS %08X\n", Memory[Address] | (Memory[Address + 1] << 8)
+                | (Memory[Address + 2] << 16) | (Memory[Address + 3] << 24), Address); return Memory[Address] | (Memory[Address + 1] << 8)
                 | (Memory[Address + 2] << 16) | (Memory[Address + 3] << 24);
     default: return 0;
     }
@@ -117,6 +118,7 @@ void WriteMemory(nat Address, nat Data, nat Width) {
         Memory[Address + 1] = (Data >> 8) & 0xFF;
         Memory[Address + 2] = (Data >> 16) & 0xFF;
         Memory[Address + 3] = (Data >> 24) & 0xFF;
+        printf("WR %08X AT ADDRESS %08X\n", Data, Address);
         break;
     }
   }
@@ -148,6 +150,15 @@ void DrawURegisterBlinkenlights(Rectangle Bounds) {
   for(nat i = 0; i < 16; i++) {
     DrawBlinkenlights(glasscell->rootp->sol32core__DOT__UserRegisterBank__DOT__RegisterBank[i],
         32, {Bounds.x, Bounds.y+Bounds.height*i/16, Bounds.width, Bounds.height/16}, RED, WHITE);
+  }
+}
+
+void DrawMemoryBlinkenlights(nat Base, nat Range, Rectangle Bounds) {
+  for(nat i = Base; i < Range; i++) {
+    if(Base + i < sizeof(MemoryNAT32)/sizeof(MemoryNAT32[0])) {
+      DrawBlinkenlights(MemoryNAT32[Base + i],
+          32, {Bounds.x, Bounds.y+Bounds.height*i/Range, Bounds.width, Bounds.height/Range}, RED, WHITE);
+    }
   }
 }
 
@@ -258,7 +269,17 @@ int main(int argc, char** argv) {
   bool Reset = false;
   char CycText[] = "00000000";
 
+  printf("cyc\n");
   glasscell->Instruction = ReadMemory(glasscell->InstructionPointer, 2);
+  glasscell->eval();
+  if(glasscell->ReadEnable) {
+    glasscell->DataIn = ReadMemory(glasscell->MemoryAddress, glasscell->DataWidth);
+  }
+  ClockPosedge();
+  if(glasscell->WriteEnable) {
+    WriteMemory(glasscell->MemoryAddress, glasscell->DataOut, glasscell->DataWidth);
+  }
+  ClockNegedge();
   
   while(!WindowShouldClose()) {
     if(!StepMode) {
@@ -275,12 +296,17 @@ int main(int argc, char** argv) {
     }
 
     while(StepsRemaining > 0) {
-      tick();
+      printf("cyc\n");
       glasscell->Instruction = ReadMemory(glasscell->InstructionPointer, 2);
-      glasscell->DataIn = ReadMemory(glasscell->MemoryAddress, 2);
-      if(glasscell->WriteEnable) {
-        WriteMemory(glasscell->MemoryAddress, glasscell->DataOut, 2);
+      glasscell->eval();
+      if(glasscell->ReadEnable) {
+        glasscell->DataIn = ReadMemory(glasscell->MemoryAddress, glasscell->DataWidth);
       }
+      ClockPosedge();
+      if(glasscell->WriteEnable) {
+        WriteMemory(glasscell->MemoryAddress, glasscell->DataOut, glasscell->DataWidth);
+      }
+      ClockNegedge();
       
       StepsRemaining = StepsRemaining - 1;
     }
@@ -300,12 +326,16 @@ int main(int argc, char** argv) {
     DrawTextRec(BMTTF, "Supervisor Register Set", {20, sh-190, 16*20, 20}, false, WHITE);
     DrawSRegisterBlinkenlights({20, sh-170, 320, 10*16});
 
+    DrawMemoryBlinkenlights(0, 32, {500, 500, 320, 320});
+
     snprintf(CycText, 9, "%08X", CycleCount);
     DrawTextRec(BMTTF, "Cycle Count", {500, 10, 120, 20}, false, WHITE);
     DrawTextRec(BMTTF, CycText, {500, 30, 120, 20}, false, WHITE);
 
     DrawTextRec(BMTTF, "VCNZ", {532, 60, 56, 20}, false, WHITE);
     DrawBlinkenlights(glasscell->rootp->sol32core__DOT__ALUFlags, 4, {530, 80, 60, 20}, GREEN, WHITE);
+
+    DrawBlinkenlights(glasscell->DataOut, 32, {500, 180, 320, 20}, GREEN, WHITE);
 
     DrawTextRec(BMTTF, "Run / Step", {360, 10, 120, 20}, false, WHITE);
     StepMode = DrawSwitchH({360, 30, 120, 20}, StepMode, WHITE);

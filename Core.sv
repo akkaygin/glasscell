@@ -11,7 +11,9 @@ module sol32core(
   output[31:0] InstructionPointer,
 
   input[31:0] DataIn,
+  output ReadEnable,
   output WriteEnable,
+  output[1:0] DataWidth,
   output[31:0] DataOut,
   output[31:0] MemoryAddress
 );
@@ -30,7 +32,7 @@ module sol32core(
   end
 
   logic InternalClock;
-  assign InternalClock = Clock && ~CoreControlRegister[0];
+  assign InternalClock = Clock;
 
   logic[3:0] Source1Address;
   logic[3:0] Source2Address;
@@ -176,7 +178,10 @@ module sol32core(
     Result_COMP
   );
 
+  assign ReadEnable = Instruction[6:3] == 4'b0110;
   assign WriteEnable = Instruction[6:3] == 4'b0111;
+  assign DataWidth = Instruction[1:0];
+  assign MemoryAddress = Source2;
 
   always_comb begin : TargetWECtr
     if(Instruction[6:0] == 7'h7E) begin
@@ -195,6 +200,8 @@ module sol32core(
       end
     end
   end
+
+  assign DataOut = Source1;
 
   always_comb begin : ResultSel
     logic[31:0] ResImm;
