@@ -57,9 +57,6 @@ Vector2 MeasuredFontDim;
 
 MouseCursor Cursor;
 
-void tick() {
-}
-
 void ClockPosedge() {
   ++CycleCount;
   glasscell->eval();
@@ -269,17 +266,7 @@ int main(int argc, char** argv) {
   bool Reset = false;
   char CycText[] = "00000000";
 
-  printf("cyc\n");
   glasscell->Instruction = ReadMemory(glasscell->InstructionPointer, 2);
-  glasscell->eval();
-  if(glasscell->ReadEnable) {
-    glasscell->DataIn = ReadMemory(glasscell->MemoryAddress, glasscell->DataWidth);
-  }
-  ClockPosedge();
-  if(glasscell->WriteEnable) {
-    WriteMemory(glasscell->MemoryAddress, glasscell->DataOut, glasscell->DataWidth);
-  }
-  ClockNegedge();
   
   while(!WindowShouldClose()) {
     if(!StepMode) {
@@ -288,7 +275,8 @@ int main(int argc, char** argv) {
 
     if(Reset) {
       glasscell->Reset = 1;
-      tick();
+      ClockPosedge();
+      ClockNegedge();
       glasscell->Instruction = ReadMemory(glasscell->InstructionPointer, 2);
       glasscell->Reset = 0;
       
@@ -296,8 +284,6 @@ int main(int argc, char** argv) {
     }
 
     while(StepsRemaining > 0) {
-      printf("cyc\n");
-      glasscell->Instruction = ReadMemory(glasscell->InstructionPointer, 2);
       glasscell->eval();
       if(glasscell->ReadEnable) {
         glasscell->DataIn = ReadMemory(glasscell->MemoryAddress, glasscell->DataWidth);
@@ -307,6 +293,7 @@ int main(int argc, char** argv) {
         WriteMemory(glasscell->MemoryAddress, glasscell->DataOut, glasscell->DataWidth);
       }
       ClockNegedge();
+      glasscell->Instruction = ReadMemory(glasscell->InstructionPointer, 2);
       
       StepsRemaining = StepsRemaining - 1;
     }
