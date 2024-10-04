@@ -336,8 +336,8 @@ bool DrawSwitchT(Rectangle Bounds, bool state, Color tint) {
 }
 /* End of Switches */
 
-nat sw = 1024;
-nat sh = 960;
+nat sw = 800;
+nat sh = 900;
 
 int main(int argc, char** argv) {
   Verilated::commandArgs(argc, argv);
@@ -361,6 +361,8 @@ int main(int argc, char** argv) {
 
   bool Reset = false;
   char CycText[] = "00000000";
+
+  nat MemoryBLBase = 0;
 
   glasscell->Instruction = ReadMemory(glasscell->InstructionPointer, 2);
   
@@ -390,6 +392,7 @@ int main(int argc, char** argv) {
       }
       ClockNegedge();
       glasscell->Instruction = ReadMemory(glasscell->InstructionPointer, 2);
+      glasscell->eval();
       
       StepsRemaining = StepsRemaining - 1;
     }
@@ -398,46 +401,67 @@ int main(int argc, char** argv) {
     ClearBackground({0x0F, 0x0F, 0x0F, 0xFF});
     Cursor = MOUSE_CURSOR_DEFAULT;
 
-    DrawTextRec(BMTTF, "Instruction Pointer", {20, 10, 16*20, 20}, false, WHITE);
-    DrawBlinkenlights(glasscell->InstructionPointer >> 16, 16, {20, 30, 16*20, 10}, RED, WHITE);
-    DrawBlinkenlights(glasscell->InstructionPointer & 0xFFFF, 16, {20, 40, 16*20, 10}, RED, WHITE);
+    DrawTextRec(BMTTF, "Instruction Pointer", {21, 10, 368, 20}, false, WHITE);
+    DrawBlinkenlights(glasscell->InstructionPointer >> 16, 16, {21, 30, 368, 10}, RED, WHITE);
+    DrawBlinkenlights(glasscell->InstructionPointer & 0xFFFF, 16, {21, 40, 368, 10}, RED, WHITE);
 
-    DrawTextRec(BMTTF, "Instruction", {20, 60, 16*20, 20}, false, WHITE);
-    DrawBlinkenlights(glasscell->Instruction >> 16, 16, {20, 80, 16*20, 10}, RED, WHITE);
-    DrawBlinkenlights(glasscell->Instruction & 0xFFFF, 16, {20, 90, 16*20, 10}, RED, WHITE);
+    DrawTextRec(BMTTF, "Instruction", {21, 60, 368, 20}, false, WHITE);
+    DrawBlinkenlights(glasscell->Instruction >> 16, 16, {21, 80, 368, 10}, RED, WHITE);
+    DrawBlinkenlights(glasscell->Instruction & 0xFFFF, 16, {21, 90, 368, 10}, RED, WHITE);
+    
+    DrawTextRec(BMTTF, "Core Control Register", {24, 110, 352, 20}, true, WHITE);
+    DrawBlinkenlights(glasscell->rootp->sol32core__DOT__CoreControlRegister, 32, {24, 130, 352, 20}, GREEN, WHITE);
 
-    DrawTextRec(BMTTF, "Supervisor Register Set", {20, sh-190, 16*20, 20}, false, WHITE);
-    DrawSRegisterBlinkenlights({20, sh-170, 320, 10*16}, RED, WHITE);
+    DrawTextRec(BMTTF, "Memory Address", {414, 10, 352, 20}, false, WHITE);
+    if(glasscell->WriteEnable || glasscell->ReadEnable) {
+    DrawBlinkenlights(glasscell->MemoryAddress, 32, {414, 30, 352, 20}, GREEN, WHITE);
+    } else {
+      DrawBlinkenlights(0, 32, {414, 30, 352, 20}, GREEN, WHITE);
+    }
 
-    DrawMemoryBlinkenlights(0, 32, {500, 500, 320, 320}, RED, WHITE);
+    DrawTextRec(BMTTF, "Data Out", {502, 60, 176, 20}, false, WHITE);
+    if(glasscell->WriteEnable) {
+      DrawBlinkenlights(glasscell->DataOut, 32, {414, 80, 352, 20}, GREEN, WHITE);
+    } else {
+      DrawBlinkenlights(0, 32, {414, 80, 352, 20}, GREEN, WHITE);
+    }
+    
+    DrawTextRec(BMTTF, "Data In", {502, 110, 176, 20}, false, WHITE);
+    if(glasscell->ReadEnable) {
+      DrawBlinkenlights(glasscell->DataIn, 32, {414, 130, 352, 20}, GREEN, WHITE);
+    } else {
+      DrawBlinkenlights(0, 32, {414, 130, 352, 20}, GREEN, WHITE);
+    }
 
-    snprintf(CycText, 9, "%08X", CycleCount);
+    DrawTextRec(BMTTF, "Supervisor Register Set", {24, 640, 352, 20}, false, WHITE);
+    DrawSRegisterBlinkenlights({24, 660, 352, 160}, RED, WHITE);
+    
+    DrawTextRec(BMTTF, "User Register Set", {414, 640, 352, 20}, false, WHITE);
+    DrawURegisterBlinkenlights({414, 660, 352, 160}, RED, WHITE);
+
+    //DrawMemoryBlinkenlights(MemoryBLBase, 32, {500, 500, 320, 320}, RED, WHITE);
+
     DrawTextRec(BMTTF, "Cycle Count", {500, 10, 120, 20}, false, WHITE);
     DrawTextRec(BMTTF, CycText, {500, 30, 120, 20}, false, WHITE);
 
-    DrawTextRec(BMTTF, "VCNZ", {532, 60, 56, 20}, false, WHITE);
-    DrawBlinkenlights(glasscell->rootp->sol32core__DOT__ALUFlags, 4, {530, 80, 60, 20}, GREEN, WHITE);
+    DrawTextRec(BMTTF, "Run / Step", {20, 840, 120, 20}, false, WHITE);
+    StepMode = DrawSwitchH({20, 860, 120, 20}, StepMode, WHITE);
 
-    DrawBlinkenlights(glasscell->DataOut, 32, {500, 180, 320, 20}, GREEN, WHITE);
-
-    DrawTextRec(BMTTF, "Run / Step", {360, 10, 120, 20}, false, WHITE);
-    StepMode = DrawSwitchH({360, 30, 120, 20}, StepMode, WHITE);
-
-    DrawTextRec(BMTTF, "Step", {360, 60, 120, 20}, true, WHITE);
+    DrawTextRec(BMTTF, "Step", {160, 840, 120, 20}, true, WHITE);
     if(StepMode) {
-      if(DrawButton({360, 80, 60, 20}, WHITE, RED)) StepsRemaining = StepsRemaining + 1;
-      if(DrawButton({420, 80, 30, 20}, {0xD0, 0xD0, 0xD0, 0xFF}, RED)) StepsRemaining = StepsRemaining + 4;
-      if(DrawButton({450, 80, 30, 20}, {0xB0, 0xB0, 0xB0, 0xFF}, RED)) StepsRemaining = StepsRemaining + 16;
+      if(DrawButton({160, 860, 60, 20}, WHITE, RED)) StepsRemaining = StepsRemaining + 1;
+      if(DrawButton({220, 860, 30, 20}, {0xD0, 0xD0, 0xD0, 0xFF}, RED)) StepsRemaining = StepsRemaining + 4;
+      if(DrawButton({250, 860, 30, 20}, {0xB0, 0xB0, 0xB0, 0xFF}, RED)) StepsRemaining = StepsRemaining + 16;
 
-      DrawTextRec(BMTTF, "1", {360, 80, 60, 20}, true, BLACK);
-      DrawTextRec(BMTTF, "4", {420, 80, 30, 20}, true, BLACK);
-      DrawTextRec(BMTTF, "16", {450, 80, 30, 20}, true, BLACK);
+      DrawTextRec(BMTTF, "1", {160, 860, 60, 20}, true, BLACK);
+      DrawTextRec(BMTTF, "4", {220, 860, 30, 20}, true, BLACK);
+      DrawTextRec(BMTTF, "16", {250, 860, 30, 20}, true, BLACK);
     } else {
-      DrawRectangleRec({360, 80, 120, 20}, {0xA0, 0xA0, 0xA0, 0xFF});
+      DrawRectangleRec({160, 860, 120, 20}, {0xA0, 0xA0, 0xA0, 0xFF});
     }
 
-    DrawTextRec(BMTTF, "Reset", {360, 110, 120, 20}, true, WHITE);
-    Reset = DrawButton({360, 130, 120, 20}, WHITE, RED);
+    DrawTextRec(BMTTF, "Reset", {660, 840, 120, 20}, true, WHITE);
+    Reset = DrawButton({660, 860, 120, 20}, WHITE, RED);
 
     SetMouseCursor(Cursor);
     EndDrawing();
