@@ -122,6 +122,9 @@ void WriteMemory(nat Address, nat Data, nat Width) {
 }
 
 /* Blinkenlights */
+Color BlinkenlightsOutlineColor = BLACK;
+float BlinkenlightsOutlineThickness = 1.0f;
+
 void DrawBlinkenlights(uint32_t Data, nat Width, Rectangle Bounds, Color tintA, Color tintB) {
   for(nat i = 0; i < Width; i++) {
     if((Data >> (Width - 1 - i)) & 1)
@@ -132,32 +135,125 @@ void DrawBlinkenlights(uint32_t Data, nat Width, Rectangle Bounds, Color tintA, 
         Bounds.y, Bounds.width / Width, Bounds.height, tintB);
     
     DrawRectangleLinesEx({Bounds.x + (Bounds.width * i / Width),
-      Bounds.y, Bounds.width / Width, Bounds.height}, 1.0f, {0x20, 0x20, 0x20, 0xFF});
+      Bounds.y, Bounds.width / Width, Bounds.height}, BlinkenlightsOutlineThickness, BlinkenlightsOutlineColor);
   }
 }
 
-void DrawSRegisterBlinkenlights(Rectangle Bounds) {
+void DrawSRegisterBlinkenlights(Rectangle Bounds, Color tintA, Color tintB) {
   for(nat i = 0; i < 16; i++) {
     DrawBlinkenlights(glasscell->rootp->sol32core__DOT__SupervisorRegisterBank__DOT__RegisterBank[i],
-        32, {Bounds.x, Bounds.y+Bounds.height*i/16, Bounds.width, Bounds.height/16}, RED, WHITE);
+        32, {Bounds.x, Bounds.y+Bounds.height*i/16, Bounds.width, Bounds.height/16}, tintA, tintB);
   }
 }
 
-void DrawURegisterBlinkenlights(Rectangle Bounds) {
+void DrawURegisterBlinkenlights(Rectangle Bounds, Color tintA, Color tintB) {
   for(nat i = 0; i < 16; i++) {
     DrawBlinkenlights(glasscell->rootp->sol32core__DOT__UserRegisterBank__DOT__RegisterBank[i],
-        32, {Bounds.x, Bounds.y+Bounds.height*i/16, Bounds.width, Bounds.height/16}, RED, WHITE);
+        32, {Bounds.x, Bounds.y+Bounds.height*i/16, Bounds.width, Bounds.height/16}, tintA, tintB);
   }
 }
 
-void DrawMemoryBlinkenlights(nat Base, nat Range, Rectangle Bounds) {
+void DrawMemoryBlinkenlights(nat Base, nat Range, Rectangle Bounds, Color tintA, Color tintB) {
   for(nat i = Base; i < Range; i++) {
     if(Base + i < sizeof(MemoryNAT32)/sizeof(MemoryNAT32[0])) {
       DrawBlinkenlights(MemoryNAT32[Base + i],
-          32, {Bounds.x, Bounds.y+Bounds.height*i/Range, Bounds.width, Bounds.height/Range}, RED, WHITE);
+          32, {Bounds.x, Bounds.y+Bounds.height*i/Range, Bounds.width, Bounds.height/Range}, tintA, tintB);
     }
   }
 }
+/* End of Blinkenlights */
+
+/* Segment Displays */
+enum sevensegmentarraydisplaymode {
+  SSADM_HORDEC = 0,
+  SSADM_HORHEX = 1,
+  SSADM_VERDEC = 2,
+  SSADM_VERHEX = 3,
+};
+
+int SevenSegmentMap[] = {
+  0b1110111,
+
+  0b0100100,
+  0b1011101,
+  0b1011011,
+  0b0111010,
+  0b1101011,
+  0b1101111,
+  0b1011010,
+  0b1111111,
+  
+  0b1111011,
+  0b1111110,
+  0b0101111,
+  0b0001101,
+  0b0011111,
+  0b1101101,
+  0b1101100,
+};
+
+Color SegmentsOutlineColor = BLACK;
+float SegmentsOutlineThickness = 1.0f;
+
+float SegmentsHSegmentWCoeff = 0.70f;
+float SegmentsHSegmentHCoeff = 0.15f;
+float SegmentsVSegmentWCoeff = 0.15f;
+float SegmentsVSegmentHCoeff = 0.5f;
+
+void DrawSevenSegmentDisplay(nat Data, Rectangle Bounds, Color tintA, Color tintB) {
+  float hSegmentW = Bounds.width  * SegmentsHSegmentWCoeff;
+  float hSegmentH = Bounds.height * SegmentsHSegmentHCoeff;
+  float vSegmentW = Bounds.width  * SegmentsVSegmentWCoeff;
+  float vSegmentH = Bounds.height * SegmentsVSegmentHCoeff;
+
+  Rectangle Segments[] = {
+    { Bounds.x + vSegmentW, Bounds.y, hSegmentW, hSegmentH },
+    { Bounds.x, Bounds.y, vSegmentW, vSegmentH },
+    { Bounds.x + Bounds.width - vSegmentW, Bounds.y, vSegmentW, vSegmentH },
+
+    { Bounds.x + vSegmentW, Bounds.y + vSegmentH - hSegmentH * 0.5f, hSegmentW, hSegmentH },
+    
+    { Bounds.x, Bounds.y + vSegmentH, vSegmentW, vSegmentH },
+    { Bounds.x + Bounds.width - vSegmentW, Bounds.y + vSegmentH, vSegmentW, vSegmentH },
+    { Bounds.x + vSegmentW, Bounds.y + Bounds.height - hSegmentH, hSegmentW, hSegmentH },
+  };
+
+  for (int i = 6; i >= 0; i--) {
+    if ((SevenSegmentMap[Data] >> (6-i)) & 1) {
+      DrawRectangleRec(Segments[i], tintA);
+    } else {
+      DrawRectangleRec(Segments[i], tintB);
+    }
+    DrawRectangleLinesEx(Segments[i], SegmentsOutlineThickness, SegmentsOutlineColor);
+  }
+}
+
+sevensegmentarraydisplaymode SevenSegmentDisplayArrayMode = SSADM_HORDEC;
+float SevenSegmentDisplayArraySpacingCoeff = 0.95f;
+
+void DrawSevenSegmentDisplayArray(nat Data, nat Width, Rectangle Bounds, Color tintA, Color tintB) {
+  for(int i = Width-1; i >= 0; i--) {
+    Rectangle Bounds2;
+
+    if(SevenSegmentDisplayArrayMode >> 1) {
+      Bounds2 = { Bounds.x, Bounds.y + Bounds.height * i / Width, Bounds.width, (Bounds.height / Width) * SevenSegmentDisplayArraySpacingCoeff};
+    } else {
+      Bounds2 = { Bounds.x + Bounds.width * i / Width, Bounds.y, (Bounds.width / Width) * SevenSegmentDisplayArraySpacingCoeff, Bounds.height};
+    }
+
+    nat Data2;
+    if(SevenSegmentDisplayArrayMode & 1) {
+      Data2 = Data & 0xF;
+      Data = Data >> 4;
+    } else {
+      Data2 = Data % 10;
+      Data = Data / 10;
+    }
+
+    DrawSevenSegmentDisplay(Data2, Bounds2, tintA, tintB);
+  }
+}
+/* End of Segment Displays */
 
 /* Button */
 bool DrawButton(Rectangle Bounds, Color tintA, Color tintB) {
@@ -311,9 +407,9 @@ int main(int argc, char** argv) {
     DrawBlinkenlights(glasscell->Instruction & 0xFFFF, 16, {20, 90, 16*20, 10}, RED, WHITE);
 
     DrawTextRec(BMTTF, "Supervisor Register Set", {20, sh-190, 16*20, 20}, false, WHITE);
-    DrawSRegisterBlinkenlights({20, sh-170, 320, 10*16});
+    DrawSRegisterBlinkenlights({20, sh-170, 320, 10*16}, RED, WHITE);
 
-    DrawMemoryBlinkenlights(0, 32, {500, 500, 320, 320});
+    DrawMemoryBlinkenlights(0, 32, {500, 500, 320, 320}, RED, WHITE);
 
     snprintf(CycText, 9, "%08X", CycleCount);
     DrawTextRec(BMTTF, "Cycle Count", {500, 10, 120, 20}, false, WHITE);
