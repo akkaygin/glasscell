@@ -41,7 +41,14 @@ module sol32core(
   
   assign Source1Address = Instruction[27:24];
   assign Source2Address = Instruction[23:20];
-  assign TargetAddress  = Instruction[31:28];
+
+  always_comb begin
+    if(Instruction[6:4] == 3'b100) begin
+      TargetAddress = 15;
+    end else begin
+      TargetAddress  = Instruction[31:28];
+    end
+  end
 
   logic TargetWriteEnable_SR;
   
