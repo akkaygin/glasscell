@@ -116,8 +116,10 @@ module sol32core(
       Embedded = {{22{Instruction[7]}}, Instruction[17:8]} << {Instruction[19:18], 3'b000};
     end else if(Instruction[6:4] == 3'b001) begin
       Embedded = {{16{Instruction[7]}}, Instruction[23:8]};
-    end else if(Instruction[6:4] == 3'b100) begin
+    end else if(Instruction[6:4] == 3'b100 || Instruction[6:3] == 4'b0111) begin
       Embedded = {{14{Instruction[7]}}, Instruction[31:28], Instruction[19:8], 2'b00};
+    end else if(Instruction[6:3] == 4'b0110) begin
+      Embedded = {{14{Instruction[7]}}, Instruction[27:24], Instruction[19:8], 2'b00};
     end else begin
       Embedded = {{20{Instruction[7]}}, Instruction[19:8]};
     end
