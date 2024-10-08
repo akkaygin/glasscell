@@ -74,7 +74,9 @@ void ClockNegedge() {
 }
 
 nat MemoryNAT32[] = {
-0x20000400,
+0x00000240,
+0x0000000F,
+0x2FFFFCB2,
 0x11000100,
 0xF21FFFC3,
 0x00000240,
@@ -404,13 +406,13 @@ int main(int argc, char** argv) {
     ClearBackground({0x0F, 0x0F, 0x0F, 0xFF});
     Cursor = MOUSE_CURSOR_DEFAULT;
 
-    DrawTextRec(BMTTF, "Instruction Pointer", {21, 10, 368, 20}, false, WHITE);
-    DrawBlinkenlights(glasscell->InstructionPointer >> 16, 16, {21, 30, 368, 10}, RED, WHITE);
-    DrawBlinkenlights(glasscell->InstructionPointer & 0xFFFF, 16, {21, 40, 368, 10}, RED, WHITE);
+    DrawTextRec(BMTTF, "Instruction Pointer", {16, 10, 368, 20}, false, WHITE);
+    DrawBlinkenlights(glasscell->InstructionPointer >> 16, 16, {16, 30, 368, 10}, RED, WHITE);
+    DrawBlinkenlights(glasscell->InstructionPointer & 0xFFFF, 16, {16, 40, 368, 10}, RED, WHITE);
 
-    DrawTextRec(BMTTF, "Instruction", {21, 60, 368, 20}, false, WHITE);
-    DrawBlinkenlights(glasscell->Instruction >> 16, 16, {21, 80, 368, 10}, RED, WHITE);
-    DrawBlinkenlights(glasscell->Instruction & 0xFFFF, 16, {21, 90, 368, 10}, RED, WHITE);
+    DrawTextRec(BMTTF, "Instruction", {16, 60, 368, 20}, false, WHITE);
+    DrawBlinkenlights(glasscell->Instruction >> 16, 16, {16, 80, 368, 10}, RED, WHITE);
+    DrawBlinkenlights(glasscell->Instruction & 0xFFFF, 16, {16, 90, 368, 10}, RED, WHITE);
     
     DrawTextRec(BMTTF, "Core Control Register", {24, 110, 352, 20}, true, WHITE);
     DrawBlinkenlights(glasscell->rootp->sol32core__DOT__CoreControlRegister, 32, {24, 130, 352, 20}, GREEN, WHITE);
