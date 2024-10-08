@@ -74,11 +74,12 @@ void ClockNegedge() {
 }
 
 nat MemoryNAT32[] = {
-  0x10BEEF10, // load
-  0x01000C3A, // wr
-  0x20000C32, // rd
-  0x00000000,
-  0x00000000,
+0x20000400,
+0x11000100,
+0xF21FFFC3,
+0x00000240,
+0x3000DE00,
+0xF00FFCC0,
 };
 
 uint8_t* Memory = (uint8_t*)MemoryNAT32;
@@ -174,7 +175,7 @@ enum sevensegmentarraydisplaymode {
 int SevenSegmentMap[] = {
   0b1110111,
 
-  0b0100100,
+  0b0010010,
   0b1011101,
   0b1011011,
   0b0111010,
@@ -186,18 +187,18 @@ int SevenSegmentMap[] = {
   0b1111011,
   0b1111110,
   0b0101111,
-  0b0001101,
+  0b1100101,
   0b0011111,
   0b1101101,
   0b1101100,
 };
 
 Color SegmentsOutlineColor = BLACK;
-float SegmentsOutlineThickness = 1.0f;
+float SegmentsOutlineThickness = 0.5f;
 
-float SegmentsHSegmentWCoeff = 0.70f;
-float SegmentsHSegmentHCoeff = 0.15f;
-float SegmentsVSegmentWCoeff = 0.15f;
+float SegmentsHSegmentWCoeff = 0.60f;
+float SegmentsHSegmentHCoeff = 0.20f;
+float SegmentsVSegmentWCoeff = 0.20f;
 float SegmentsVSegmentHCoeff = 0.5f;
 
 void DrawSevenSegmentDisplay(nat Data, Rectangle Bounds, Color tintA, Color tintB) {
@@ -224,12 +225,15 @@ void DrawSevenSegmentDisplay(nat Data, Rectangle Bounds, Color tintA, Color tint
     } else {
       DrawRectangleRec(Segments[i], tintB);
     }
+  }
+
+  for(int i = 0; i < 7; i++) {
     DrawRectangleLinesEx(Segments[i], SegmentsOutlineThickness, SegmentsOutlineColor);
   }
 }
 
 sevensegmentarraydisplaymode SevenSegmentDisplayArrayMode = SSADM_HORDEC;
-float SevenSegmentDisplayArraySpacingCoeff = 0.95f;
+float SevenSegmentDisplayArraySpacingCoeff = 0.8f;
 
 void DrawSevenSegmentDisplayArray(nat Data, nat Width, Rectangle Bounds, Color tintA, Color tintB) {
   for(int i = Width-1; i >= 0; i--) {
@@ -360,9 +364,8 @@ int main(int argc, char** argv) {
   MeasuredFontDim = MeasureTextEx(BMTTF, "0", BMTTF.baseSize, BMTTFSpacing);
 
   bool Reset = false;
-  char CycText[] = "00000000";
-
   nat MemoryBLBase = 0;
+  SevenSegmentDisplayArrayMode = SSADM_HORHEX;
 
   glasscell->Instruction = ReadMemory(glasscell->InstructionPointer, 2);
   
@@ -441,8 +444,8 @@ int main(int argc, char** argv) {
 
     //DrawMemoryBlinkenlights(MemoryBLBase, 32, {500, 500, 320, 320}, RED, WHITE);
 
-    DrawTextRec(BMTTF, "Cycle Count", {500, 10, 120, 20}, false, WHITE);
-    DrawTextRec(BMTTF, CycText, {500, 30, 120, 20}, false, WHITE);
+    DrawTextRec(BMTTF, "Cycle Count", {520, 840, 120, 20}, false, WHITE);
+    DrawSevenSegmentDisplayArray(CycleCount, 6, {520, 860, 120, 20}, GREEN, {50, 50, 50, 255});
 
     DrawTextRec(BMTTF, "Run / Step", {20, 840, 120, 20}, false, WHITE);
     StepMode = DrawSwitchH({20, 860, 120, 20}, StepMode, WHITE);
