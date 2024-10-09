@@ -74,14 +74,13 @@ void ClockNegedge() {
 }
 
 nat MemoryNAT32[] = {
-0x00000240,
-0x0000000F,
-0x2FFFFCB2,
-0x11000100,
-0xF21FFFC3,
-0x00000240,
-0x3000DE00,
-0xF00FFCC0,
+0x00000440,
+0x68656C6C,
+0x6F000000,
+0x0F000000,
+0x20100030,
+0x10000100,
+0xF31FFEC3,
 };
 
 uint8_t* Memory = (uint8_t*)MemoryNAT32;
@@ -124,21 +123,37 @@ void WriteMemory(nat Address, nat Data, nat Width) {
   }
 }
 
+/* Terminal Emultaor */
+/* End of Terminal Emultaor */
+
 /* Blinkenlights */
 Color BlinkenlightsOutlineColor = BLACK;
 float BlinkenlightsOutlineThickness = 1.0f;
+int BlinkenlightsDirection = 0;
 
 void DrawBlinkenlights(uint32_t Data, nat Width, Rectangle Bounds, Color tintA, Color tintB) {
   for(nat i = 0; i < Width; i++) {
-    if((Data >> (Width - 1 - i)) & 1)
-      DrawRectangle(Bounds.x + (Bounds.width * i / Width),
-        Bounds.y, Bounds.width / Width, Bounds.height, tintA);
-    else
-      DrawRectangle(Bounds.x + (Bounds.width * i / Width),
-        Bounds.y, Bounds.width / Width, Bounds.height, tintB);
-    
-    DrawRectangleLinesEx({Bounds.x + (Bounds.width * i / Width),
-      Bounds.y, Bounds.width / Width, Bounds.height}, BlinkenlightsOutlineThickness, BlinkenlightsOutlineColor);
+    if(BlinkenlightsDirection == 0) {
+      if((Data >> (Width - 1 - i)) & 1)
+        DrawRectangle(Bounds.x + (Bounds.width * i / Width),
+          Bounds.y, Bounds.width / Width, Bounds.height, tintA);
+      else
+        DrawRectangle(Bounds.x + (Bounds.width * i / Width),
+          Bounds.y, Bounds.width / Width, Bounds.height, tintB);
+      
+      DrawRectangleLinesEx({Bounds.x + (Bounds.width * i / Width),
+        Bounds.y, Bounds.width / Width, Bounds.height}, BlinkenlightsOutlineThickness, BlinkenlightsOutlineColor);
+    } else if(BlinkenlightsDirection == 1) {
+      if((Data >> (Width - 1 - i)) & 1)
+        DrawRectangle(Bounds.x, Bounds.y + (Bounds.height * i / Width),
+            Bounds.width, Bounds.height / Width, tintA);
+      else
+        DrawRectangle(Bounds.x, Bounds.y + (Bounds.height * i / Width),
+            Bounds.width, Bounds.height / Width, tintB);
+      
+      DrawRectangleLinesEx({Bounds.x, Bounds.y + (Bounds.height * i / Width),
+            Bounds.width, Bounds.height / Width}, BlinkenlightsOutlineThickness, BlinkenlightsOutlineColor);
+    }
   }
 }
 
@@ -160,6 +175,9 @@ void DrawMemoryBlinkenlights(nat Base, nat Range, Rectangle Bounds, Color tintA,
   for(nat i = Base; i < Range; i++) {
     if(Base + i < sizeof(MemoryNAT32)/sizeof(MemoryNAT32[0])) {
       DrawBlinkenlights(MemoryNAT32[Base + i],
+          32, {Bounds.x, Bounds.y+Bounds.height*i/Range, Bounds.width, Bounds.height/Range}, tintA, tintB);
+    } else {
+      DrawBlinkenlights(0,
           32, {Bounds.x, Bounds.y+Bounds.height*i/Range, Bounds.width, Bounds.height/Range}, tintA, tintB);
     }
   }
@@ -358,7 +376,6 @@ int main(int argc, char** argv) {
   InitWindow(sw, sh, "sol32 Simulator");
   SetTargetFPS(15);
   ShowCursor();
-  SetWindowState(FLAG_WINDOW_UNDECORATED);
 
   BMTTF = LoadFontEx("BerkeleyMono.ttf", 24, 0, 250);
   SetTextLineSpacing(16);
@@ -367,6 +384,7 @@ int main(int argc, char** argv) {
 
   bool Reset = false;
   nat MemoryBLBase = 0;
+  nat MemoryBLRange = 32;
   SevenSegmentDisplayArrayMode = SSADM_HORHEX;
 
   glasscell->Instruction = ReadMemory(glasscell->InstructionPointer, 2);
@@ -421,21 +439,21 @@ int main(int argc, char** argv) {
     if(glasscell->WriteEnable || glasscell->ReadEnable) {
     DrawBlinkenlights(glasscell->MemoryAddress, 32, {414, 30, 352, 20}, GREEN, WHITE);
     } else {
-      DrawBlinkenlights(0, 32, {414, 30, 352, 20}, GREEN, WHITE);
+      DrawBlinkenlights(0, 32, {414, 30, 352, 20}, GREEN, GRAY);
     }
 
     DrawTextRec(BMTTF, "Data Out", {502, 60, 176, 20}, false, WHITE);
     if(glasscell->WriteEnable) {
       DrawBlinkenlights(glasscell->DataOut, 32, {414, 80, 352, 20}, GREEN, WHITE);
     } else {
-      DrawBlinkenlights(0, 32, {414, 80, 352, 20}, GREEN, WHITE);
+      DrawBlinkenlights(0, 32, {414, 80, 352, 20}, GREEN, GRAY);
     }
     
     DrawTextRec(BMTTF, "Data In", {502, 110, 176, 20}, false, WHITE);
     if(glasscell->ReadEnable) {
       DrawBlinkenlights(glasscell->DataIn, 32, {414, 130, 352, 20}, GREEN, WHITE);
     } else {
-      DrawBlinkenlights(0, 32, {414, 130, 352, 20}, GREEN, WHITE);
+      DrawBlinkenlights(0, 32, {414, 130, 352, 20}, GREEN, GRAY);
     }
 
     DrawTextRec(BMTTF, "Supervisor Register Set", {24, 640, 352, 20}, false, WHITE);
@@ -444,7 +462,25 @@ int main(int argc, char** argv) {
     DrawTextRec(BMTTF, "User Register Set", {414, 640, 352, 20}, false, WHITE);
     DrawURegisterBlinkenlights({414, 660, 352, 160}, RED, WHITE);
 
-    //DrawMemoryBlinkenlights(MemoryBLBase, 32, {500, 500, 320, 320}, RED, WHITE);
+    DrawBlinkenlights(MemoryBLBase, 32, {24, 280, 352, 20}, RED, WHITE);
+    DrawMemoryBlinkenlights(MemoryBLBase, MemoryBLRange, {24, 300, 352, 320}, ORANGE, WHITE);
+
+    BlinkenlightsDirection = 1;
+    if(glasscell->InstructionPointer >= MemoryBLBase
+    && glasscell->InstructionPointer < MemoryBLBase + MemoryBLRange) {
+      DrawBlinkenlights(1 << (MemoryBLRange-1 - ((glasscell->InstructionPointer - MemoryBLBase)>>2)), MemoryBLRange, {12, 300, 12, 320}, RED, WHITE);
+    } else {
+      DrawBlinkenlights(0, MemoryBLRange, {12, 300, 12, 320}, RED, WHITE);
+    }
+
+    if((glasscell->WriteEnable || glasscell->ReadEnable)
+    && glasscell->MemoryAddress >= MemoryBLBase
+    && glasscell->MemoryAddress < MemoryBLBase + MemoryBLRange) {
+      DrawBlinkenlights(1 << (MemoryBLRange-1 - ((glasscell->MemoryAddress - MemoryBLBase)>>2)), MemoryBLRange, {376, 300, 12, 320}, GREEN, WHITE);
+    } else {
+      DrawBlinkenlights(0, MemoryBLRange, {376, 300, 12, 320}, GREEN, GRAY);
+    }
+    BlinkenlightsDirection = 0;
 
     DrawTextRec(BMTTF, "Cycle Count", {520, 840, 120, 20}, false, WHITE);
     DrawSevenSegmentDisplayArray(CycleCount, 6, {520, 860, 120, 20}, GREEN, {50, 50, 50, 255});

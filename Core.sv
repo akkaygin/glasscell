@@ -147,8 +147,6 @@ module sol32core(
       CompSource1 = 0;
       CompSource2 = 0;
     end
-    $display("s2 %d", Source2Out_SR);
-    $display("em %d", Embedded);
   end
 
   logic[3:0] ALUFlags;
