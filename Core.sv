@@ -1,5 +1,4 @@
 `default_nettype none
-`timescale 10ps/1ps
 
 module sol32core(
   input Clock,
@@ -7,9 +6,12 @@ module sol32core(
   input Interrupt,
   output Mode,
 
+  input InstructionReady,
   input[31:0] Instruction,
   output[31:0] InstructionPointer,
 
+  input ReadComplete,
+  input WriteComplete,
   input[31:0] DataIn,
   output ReadEnable,
   output WriteEnable,
@@ -31,8 +33,22 @@ module sol32core(
     end
   end
 
+  logic ReadPending;
+  logic WritePending;
+  always_ff@(posedge Clock) begin
+    if(ReadPending && ReadComplete) begin
+      ReadPending <= 0;
+    end
+
+    if(WritePending && WriteComplete) begin
+      WritePending <= 0;
+    end
+  end
+
   logic InternalClock;
-  assign InternalClock = Clock;
+  always_comb begin
+    InternalClock = Clock & InstructionReady & ReadComplete & WriteComplete;
+  end
 
   logic[3:0] Source1Address;
   logic[3:0] Source2Address;
@@ -170,7 +186,7 @@ module sol32core(
     Result_ALU1
   );
 
-  always_ff@(posedge Clock) begin : ALUFlagsSel
+  always_comb begin
     if(Instruction[6:4] == 3'b000) begin
       ALUFlags = ALU2Flags;
     end else begin

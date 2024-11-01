@@ -1,8 +1,8 @@
 #include <verilated.h>
 #include <verilated_vcd_c.h>
 
-#include "Vsol32core.h"
-#include "Vsol32core___024root.h"
+#include "Vglasscell.h"
+#include "Vglasscell___024root.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -44,7 +44,7 @@ void DrawTextRec(Font font, const char *text, Rectangle position, bool centered,
 }
 /* End of Raylib Extensions */
 
-Vsol32core* glasscell;
+Vglasscell* glasscell;
 VerilatedVcdC* tfp;
 
 nat CycleCount = 0;
@@ -432,7 +432,7 @@ int main(int argc, char** argv) {
     DrawBlinkenlights(glasscell->Instruction >> 16, 16, {16, 80, 368, 10}, RED, WHITE);
     DrawBlinkenlights(glasscell->Instruction & 0xFFFF, 16, {16, 90, 368, 10}, RED, WHITE);
     
-    DrawTextRec(BMTTF, "Core Control Register", {24, 110, 352, 20}, true, WHITE);
+    DrawTextRec(BMTTF, "Core Control Register", {24, 110, 352, 20}, false, WHITE);
     DrawBlinkenlights(glasscell->rootp->sol32core__DOT__CoreControlRegister, 32, {24, 130, 352, 20}, GREEN, WHITE);
 
     DrawTextRec(BMTTF, "Memory Address", {414, 10, 352, 20}, false, WHITE);
