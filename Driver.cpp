@@ -159,14 +159,14 @@ void DrawBlinkenlights(uint32_t Data, nat Width, Rectangle Bounds, Color tintA, 
 
 void DrawSRegisterBlinkenlights(Rectangle Bounds, Color tintA, Color tintB) {
   for(nat i = 0; i < 16; i++) {
-    DrawBlinkenlights(glasscell->rootp->sol32core__DOT__SupervisorRegisterBank__DOT__RegisterBank[i],
+    DrawBlinkenlights(glasscell->rootp->glasscell__DOT__Core__DOT__SupervisorRegisterBank__DOT__RegisterBank[i],
         32, {Bounds.x, Bounds.y+Bounds.height*i/16, Bounds.width, Bounds.height/16}, tintA, tintB);
   }
 }
 
 void DrawURegisterBlinkenlights(Rectangle Bounds, Color tintA, Color tintB) {
   for(nat i = 0; i < 16; i++) {
-    DrawBlinkenlights(glasscell->rootp->sol32core__DOT__UserRegisterBank__DOT__RegisterBank[i],
+    DrawBlinkenlights(glasscell->rootp->glasscell__DOT__Core__DOT__SupervisorRegisterBank__DOT__RegisterBank[i],
         32, {Bounds.x, Bounds.y+Bounds.height*i/16, Bounds.width, Bounds.height/16}, tintA, tintB);
   }
 }
@@ -365,7 +365,7 @@ nat sh = 900;
 
 int main(int argc, char** argv) {
   Verilated::commandArgs(argc, argv);
-  glasscell = new Vsol32core;
+  glasscell = new Vglasscell;
 
   Verilated::traceEverOn(true);
   tfp = new VerilatedVcdC;
@@ -387,8 +387,6 @@ int main(int argc, char** argv) {
   nat MemoryBLRange = 32;
   SevenSegmentDisplayArrayMode = SSADM_HORHEX;
 
-  glasscell->Instruction = ReadMemory(glasscell->InstructionPointer, 2);
-  
   while(!WindowShouldClose()) {
     if(!StepMode) {
       StepsRemaining = 8000; 
@@ -398,23 +396,14 @@ int main(int argc, char** argv) {
       glasscell->Reset = 1;
       ClockPosedge();
       ClockNegedge();
-      glasscell->Instruction = ReadMemory(glasscell->InstructionPointer, 2);
       glasscell->Reset = 0;
-      
       Reset = false;
     }
 
     while(StepsRemaining > 0) {
       glasscell->eval();
-      if(glasscell->ReadEnable) {
-        glasscell->DataIn = ReadMemory(glasscell->MemoryAddress, glasscell->DataWidth);
-      }
       ClockPosedge();
-      if(glasscell->WriteEnable) {
-        WriteMemory(glasscell->MemoryAddress, glasscell->DataOut, glasscell->DataWidth);
-      }
       ClockNegedge();
-      glasscell->Instruction = ReadMemory(glasscell->InstructionPointer, 2);
       glasscell->eval();
       
       StepsRemaining = StepsRemaining - 1;
@@ -425,33 +414,34 @@ int main(int argc, char** argv) {
     Cursor = MOUSE_CURSOR_DEFAULT;
 
     DrawTextRec(BMTTF, "Instruction Pointer", {16, 10, 368, 20}, false, WHITE);
-    DrawBlinkenlights(glasscell->InstructionPointer >> 16, 16, {16, 30, 368, 10}, RED, WHITE);
-    DrawBlinkenlights(glasscell->InstructionPointer & 0xFFFF, 16, {16, 40, 368, 10}, RED, WHITE);
+    DrawBlinkenlights(glasscell->rootp->glasscell__DOT__InstructionAddress >> 16, 16, {16, 30, 368, 10}, RED, WHITE);
+    DrawBlinkenlights(glasscell->rootp->glasscell__DOT__InstructionAddress & 0xFFFF, 16, {16, 40, 368, 10}, RED, WHITE);
 
     DrawTextRec(BMTTF, "Instruction", {16, 60, 368, 20}, false, WHITE);
-    DrawBlinkenlights(glasscell->Instruction >> 16, 16, {16, 80, 368, 10}, RED, WHITE);
-    DrawBlinkenlights(glasscell->Instruction & 0xFFFF, 16, {16, 90, 368, 10}, RED, WHITE);
+    DrawBlinkenlights(glasscell->rootp->glasscell__DOT__L1InstrcutionCache__DOT___Instruction >> 16, 16, {16, 80, 368, 10}, RED, WHITE);
+    DrawBlinkenlights(glasscell->rootp->glasscell__DOT__L1InstrcutionCache__DOT___Instruction & 0xFFFF, 16, {16, 90, 368, 10}, RED, WHITE);
     
     DrawTextRec(BMTTF, "Core Control Register", {24, 110, 352, 20}, false, WHITE);
-    DrawBlinkenlights(glasscell->rootp->sol32core__DOT__CoreControlRegister, 32, {24, 130, 352, 20}, GREEN, WHITE);
+    DrawBlinkenlights(glasscell->rootp->glasscell__DOT__Core__DOT__CoreControlRegister, 32, {24, 130, 352, 20}, GREEN, WHITE);
 
+    /* how do i get memory address and data to memory?
     DrawTextRec(BMTTF, "Memory Address", {414, 10, 352, 20}, false, WHITE);
-    if(glasscell->WriteEnable || glasscell->ReadEnable) {
+    if(glasscell->rootp->glasscell__DOT__Core__DOT__WritePending || glasscell->rootp->glasscell__DOT__Core__DOT__ReadPending) {
     DrawBlinkenlights(glasscell->MemoryAddress, 32, {414, 30, 352, 20}, GREEN, WHITE);
     } else {
       DrawBlinkenlights(0, 32, {414, 30, 352, 20}, GREEN, GRAY);
     }
 
     DrawTextRec(BMTTF, "Data Out", {502, 60, 176, 20}, false, WHITE);
-    if(glasscell->WriteEnable) {
+    if(glasscell->rootp->glasscell__DOT__Core__DOT__WritePending) {
       DrawBlinkenlights(glasscell->DataOut, 32, {414, 80, 352, 20}, GREEN, WHITE);
     } else {
       DrawBlinkenlights(0, 32, {414, 80, 352, 20}, GREEN, GRAY);
     }
     
     DrawTextRec(BMTTF, "Data In", {502, 110, 176, 20}, false, WHITE);
-    if(glasscell->ReadEnable) {
-      DrawBlinkenlights(glasscell->DataIn, 32, {414, 130, 352, 20}, GREEN, WHITE);
+    if(glasscell->rootp->glasscell__DOT__Core__DOT__ReadPending) {
+      DrawBlinkenlights(glasscell->rootp->glasscell__DOT__DataToCore, 32, {414, 130, 352, 20}, GREEN, WHITE);
     } else {
       DrawBlinkenlights(0, 32, {414, 130, 352, 20}, GREEN, GRAY);
     }
@@ -466,14 +456,14 @@ int main(int argc, char** argv) {
     DrawMemoryBlinkenlights(MemoryBLBase, MemoryBLRange, {24, 300, 352, 320}, ORANGE, WHITE);
 
     BlinkenlightsDirection = 1;
-    if(glasscell->InstructionPointer >= MemoryBLBase
-    && glasscell->InstructionPointer < MemoryBLBase + MemoryBLRange) {
-      DrawBlinkenlights(1 << (MemoryBLRange-1 - ((glasscell->InstructionPointer - MemoryBLBase)>>2)), MemoryBLRange, {12, 300, 12, 320}, RED, WHITE);
+    if(glasscell->rootp->glasscell__DOT__InstructionAddress >= MemoryBLBase
+    && glasscell->rootp->glasscell__DOT__InstructionAddress < MemoryBLBase + MemoryBLRange) {
+      DrawBlinkenlights(1 << (MemoryBLRange-1 - ((glasscell->rootp->glasscell__DOT__InstructionAddress - MemoryBLBase)>>2)), MemoryBLRange, {12, 300, 12, 320}, RED, WHITE);
     } else {
       DrawBlinkenlights(0, MemoryBLRange, {12, 300, 12, 320}, RED, WHITE);
     }
 
-    if((glasscell->WriteEnable || glasscell->ReadEnable)
+    if((glasscell->rootp->glasscell__DOT__Core__DOT__WritePending || glasscell->rootp->glasscell__DOT__Core__DOT__ReadPending)
     && glasscell->MemoryAddress >= MemoryBLBase
     && glasscell->MemoryAddress < MemoryBLBase + MemoryBLRange) {
       DrawBlinkenlights(1 << (MemoryBLRange-1 - ((glasscell->MemoryAddress - MemoryBLBase)>>2)), MemoryBLRange, {376, 300, 12, 320}, GREEN, WHITE);
@@ -481,6 +471,7 @@ int main(int argc, char** argv) {
       DrawBlinkenlights(0, MemoryBLRange, {376, 300, 12, 320}, GREEN, GRAY);
     }
     BlinkenlightsDirection = 0;
+    */
 
     DrawTextRec(BMTTF, "Cycle Count", {520, 840, 120, 20}, false, WHITE);
     DrawSevenSegmentDisplayArray(CycleCount, 6, {520, 860, 120, 20}, GREEN, {50, 50, 50, 255});
