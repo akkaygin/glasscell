@@ -372,6 +372,9 @@ int main(int argc, char** argv) {
   glasscell->trace(tfp, 99);
   tfp->open("trace.vcd");
 
+  // system ram
+  //glasscell->rootp->glasscell__DOT__MainMemory__DOT__Memory
+
   SetConfigFlags(FLAG_MSAA_4X_HINT); 
   InitWindow(sw, sh, "sol32 Simulator");
   SetTargetFPS(15);

@@ -27,6 +27,33 @@ module glasscell(
     the rest is easy to implement (lol, lmao)
   */
 
+  logic[1:0] MemoryDataWidth;
+  logic[31:0] MemoryAddress;
+  logic[31:0] MemoryDataIn;
+  logic[31:0] MemoryDataOut;
+
+  logic MemoryBusCycle;
+  logic MemoryBusStrobe;
+  logic MemoryBusReadWrite;
+  logic MemoryBusAcknowledge;
+  logic MemoryBusStall;
+
+  memoryemulator MainMemory(
+    Clock,
+    
+    MemoryDataWidth,
+    MemoryAddress,
+    MemoryDataIn,
+    MemoryDataOut,
+
+    MemoryBusCycle,
+    MemoryBusStrobe,
+    MemoryBusReadWrite,
+
+    MemoryBusAcknowledge,
+    MemoryBusStall
+  );
+
   logic InstructionReady;
   logic[31:0] InstructionAddress;
   logic[31:0] Instruction;
