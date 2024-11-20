@@ -415,7 +415,7 @@ int main(int argc, char** argv) {
     BeginDrawing();
     ClearBackground({0x0F, 0x0F, 0x0F, 0xFF});
     Cursor = MOUSE_CURSOR_DEFAULT;
-
+/*
     DrawTextRec(BMTTF, "Instruction Pointer", {16, 10, 368, 20}, false, WHITE);
     DrawBlinkenlights(glasscell->rootp->glasscell__DOT__InstructionAddress >> 16, 16, {16, 30, 368, 10}, RED, WHITE);
     DrawBlinkenlights(glasscell->rootp->glasscell__DOT__InstructionAddress & 0xFFFF, 16, {16, 40, 368, 10}, RED, WHITE);
@@ -426,7 +426,7 @@ int main(int argc, char** argv) {
     
     DrawTextRec(BMTTF, "Core Control Register", {24, 110, 352, 20}, false, WHITE);
     DrawBlinkenlights(glasscell->rootp->glasscell__DOT__Core__DOT__CoreControlRegister, 32, {24, 130, 352, 20}, GREEN, WHITE);
-
+*/
     /* how do i get memory address and data to memory?
     DrawTextRec(BMTTF, "Memory Address", {414, 10, 352, 20}, false, WHITE);
     if(glasscell->rootp->glasscell__DOT__Core__DOT__WritePending || glasscell->rootp->glasscell__DOT__Core__DOT__ReadPending) {

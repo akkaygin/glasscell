@@ -14,7 +14,6 @@ module registerbank(
   
   output[31:0] Source1Out,
   output[31:0] Source2Out,
-  output[31:0] TargetOut,
 
   output[31:0] InstructionPointerOut
 );
@@ -31,7 +30,7 @@ module registerbank(
     	  RegisterBank[TargetAddress] <= TargetIn;
     	end
 
-    	if((TargetAddress != 15 || (TargetAddress == 15 && !TargetWriteEnable)) && ActiveMode) begin
+    	if((TargetAddress != 15) && ActiveMode) begin
    	    RegisterBank[15] <= RegisterBank[15] + 4;
       end
     end

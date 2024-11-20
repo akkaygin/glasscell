@@ -64,9 +64,16 @@ module glasscell(
 
     InstructionAddress,
     Instruction,
-    InstructionReady
+    InstructionReady,
 
-    // memory
+    MemoryBusCycle,
+    MemoryBusStrobe,
+    MemoryBusReadWrite,
+    MemoryBusAcknowledge,
+    MemoryBusStall,
+
+    MemoryAddress,
+    MemoryDataIn
   );
 
   logic ReadComplete;
@@ -77,7 +84,7 @@ module glasscell(
   logic[1:0] DataWidth;
   logic[31:0] DataFromCore;
   logic[31:0] DataAddress;
-
+  /*
   datacache L1DataCache(
     Clock,
     Reset,
@@ -95,7 +102,7 @@ module glasscell(
 
     // memory
   );
-
+  */
   logic Interrupt;
   logic Mode;
 

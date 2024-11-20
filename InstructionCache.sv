@@ -15,7 +15,7 @@ module instructioncache(
   input BusStall,
 
   output[31:0] MemoryAddress,
-  input[31:0] MemoryDataIn,
+  input[31:0] MemoryDataIn
 );
 
   logic[18:0] Tag = InstructionAddress[31:13];
@@ -33,7 +33,7 @@ module instructioncache(
   logic LRU[0:255];
   logic State;
 
-  logic[26:0] BaseFetchAddress;
+  logic[31:0] BaseFetchAddress;
   logic[2:0] FetchCounter;
 
   logic[31:0] _Instruction;
@@ -61,8 +61,8 @@ module instructioncache(
         Valid2[i] = 0;
       end
     end else if(State == 0) begin
-      BusCycle <= 0;
-      BusStrobe <= 0;
+      _BusCycle <= 0;
+      _BusStrobe <= 0;
 
       if(Tag == Tags1[Index] && Valid1[Index]) begin
         _Instruction <= Lines1[Index][Offset];
@@ -74,27 +74,32 @@ module instructioncache(
         LRU[Index] <= 0;
       end else begin
         State <= 1;
-        BaseFetchAddress <= {Tag, Index};
+        BaseFetchAddress <= {Tag, Index, 5'b0};
         _InstructionReady <= 0;
 
-        BusCycle <= 1;
-        BusStrobe <= 1;
-        MemoryAddress <= {Tag, Index};
-
-        // sets the valid bit before actually fetching
-        if(LRU[FetchAddress[7:0]]) begin
-          Valid2[Index] <= 1;
-        end else begin
-          Valid1[Index] <= 1;
-        end
+        _BusCycle <= 1;
+        _BusStrobe <= 1;
+        _MemoryAddress <= {Tag, Index, 5'b0};
       end
     end else if(State == 1) begin
-      BusCycle <= 1;
-      BusStrobe <= 1;
-      MemoryAddress <= BaseFetchAddress + FetchCounter;
+      _BusCycle <= 1;
+      _BusStrobe <= 1;
+      _MemoryAddress <= BaseFetchAddress + {29'b0, FetchCounter};
 
       if(FetchCounter == 7) begin
         State <= 0;
+        _BusCycle <= 0;
+        _BusStrobe <= 0;
+
+        if(LRU[BaseFetchAddress[7:0]]) begin
+          Valid2[Index] <= 1;
+          _Instruction <= Lines2[Index][Offset];
+          _InstructionReady <= 1;
+        end else begin
+          Valid1[Index] <= 1;
+          _Instruction <= Lines1[Index][Offset];
+          _InstructionReady <= 1;
+        end
       end
 
       if(LRU[BaseFetchAddress[7:0]]) begin
