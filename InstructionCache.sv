@@ -71,6 +71,7 @@ module instructioncache(
         BusCycle <= 1;
         BusStrobe <= 1;
         MemoryAddress <= {Tag, Index, 5'b0};
+        FetchCounter <= 0;
       end
     end else if(State == 1) begin
       // how do i handle busacknowledge without losing a clock
