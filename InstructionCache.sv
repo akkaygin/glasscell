@@ -1,21 +1,21 @@
 `default_nettype none
 
 module instructioncache(
-  input Clock,
-  input Reset,
+  input logic Clock,
+  input logic Reset,
 
-  input [31:0] InstructionAddress,
-  output[31:0] Instruction,
-  output InstructionReady,
+  input logic[31:0] InstructionAddress,
+  output logic[31:0] Instruction,
+  output logic InstructionReady,
 
-  output BusCycle,
-  output BusStrobe,
-  output BusReadWrite,
-  input BusAcknowledge,
-  input BusStall,
+  output logic BusCycle,
+  output logic BusStrobe,
+  output logic BusReadWrite,
+  input logic BusAcknowledge,
+  input logic BusStall,
 
-  output[31:0] MemoryAddress,
-  input[31:0] MemoryDataIn
+  output logic[31:0] MemoryAddress,
+  input logic[31:0] MemoryDataIn
 );
 
   logic[18:0] Tag = InstructionAddress[31:13];
@@ -33,15 +33,7 @@ module instructioncache(
   logic LRU[0:255];
   logic State;
 
-  logic[31:0] BaseFetchAddress;
   logic[2:0] FetchCounter;
-
-  logic[31:0] _Instruction;
-  logic _InstructionReady;
-
-  logic _BusCycle;
-  logic _BusStrobe;
-  logic[31:0] _MemoryAddress;
 
   initial begin
     State = 0;
@@ -61,63 +53,53 @@ module instructioncache(
         Valid2[i] = 0;
       end
     end else if(State == 0) begin
-      _BusCycle <= 0;
-      _BusStrobe <= 0;
+      BusCycle <= 0;
+      BusStrobe <= 0;
 
       if(Tag == Tags1[Index] && Valid1[Index]) begin
-        _Instruction <= Lines1[Index][Offset];
-        _InstructionReady <= 1;
+        Instruction <= Lines1[Index][Offset];
+        InstructionReady <= 1;
         LRU[Index] <= 1;
       end else if(Tag == Tags2[Index] && Valid2[Index]) begin
-        _Instruction <= Lines2[Index][Offset];
-        _InstructionReady <= 1;
+        Instruction <= Lines2[Index][Offset];
+        InstructionReady <= 1;
         LRU[Index] <= 0;
       end else begin
         State <= 1;
-        BaseFetchAddress <= {Tag, Index, 5'b0};
-        _InstructionReady <= 0;
+        InstructionReady <= 0;
 
-        _BusCycle <= 1;
-        _BusStrobe <= 1;
-        _MemoryAddress <= {Tag, Index, 5'b0};
+        BusCycle <= 1;
+        BusStrobe <= 1;
+        MemoryAddress <= {Tag, Index, 5'b0};
       end
     end else if(State == 1) begin
-      _BusCycle <= 1;
-      _BusStrobe <= 1;
-      _MemoryAddress <= BaseFetchAddress + {29'b0, FetchCounter};
-
+      // how do i handle busacknowledge without losing a clock
       if(FetchCounter == 7) begin
         State <= 0;
-        _BusCycle <= 0;
-        _BusStrobe <= 0;
+        BusCycle <= 0;
+        BusStrobe <= 0;
 
-        if(LRU[BaseFetchAddress[7:0]]) begin
+        if(LRU[Index]) begin
           Valid2[Index] <= 1;
-          _Instruction <= Lines2[Index][Offset];
-          _InstructionReady <= 1;
+          InstructionReady <= 1;
+          Instruction <= Lines2[Index][Offset];
         end else begin
           Valid1[Index] <= 1;
-          _Instruction <= Lines1[Index][Offset];
-          _InstructionReady <= 1;
+          InstructionReady <= 1;
+          Instruction <= Lines1[Index][Offset];
         end
       end
 
-      if(LRU[BaseFetchAddress[7:0]]) begin
-        Lines2[BaseFetchAddress[7:0]][FetchCounter] <= MemoryDataIn;
+      if(LRU[Index]) begin
+        Lines2[Index][FetchCounter] <= MemoryDataIn;
       end else begin
-        Lines1[BaseFetchAddress[7:0]][FetchCounter] <= MemoryDataIn;
+        Lines1[Index][FetchCounter] <= MemoryDataIn;
       end
 
       FetchCounter <= FetchCounter + 1;
+      MemoryAddress <= {Tag, Index, FetchCounter + 3'b001, 2'b0};
     end
   end
-
-  assign Instruction = _Instruction;
-  assign InstructionReady = _InstructionReady;
-
-  assign BusCycle = _BusCycle;
-  assign BusStrobe = _BusStrobe;
-  assign MemoryAddress = _MemoryAddress;
 
   assign BusReadWrite = 0;
 endmodule

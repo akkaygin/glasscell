@@ -38,6 +38,8 @@ module glasscell(
   logic MemoryBusAcknowledge;
   logic MemoryBusStall;
 
+  assign MemoryDataWidth = 2;
+
   memoryemulator MainMemory(
     Clock,
     
@@ -73,57 +75,16 @@ module glasscell(
     MemoryBusStall,
 
     MemoryAddress,
-    MemoryDataIn
+    MemoryDataOut
   );
-
-  logic ReadComplete;
-  logic WriteComplete;
-  logic[31:0] DataToCore;
-  logic ReadEnable;
-  logic WriteEnable;
-  logic[1:0] DataWidth;
-  logic[31:0] DataFromCore;
-  logic[31:0] DataAddress;
-  /*
-  datacache L1DataCache(
-    Clock,
-    Reset,
-
-    ReadComplete,
-    WriteComplete,
-
-    ReadEnable,
-    WriteEnable,
-
-    DataWidth,
-    DataToCore,
-    DataFromCore,
-    DataAddress
-
-    // memory
-  );
-  */
-  logic Interrupt;
-  logic Mode;
 
   sol32core Core(
     Clock,
     Reset,
-    Interrupt,
-    Mode,
 
     InstructionReady,
     Instruction,
-    InstructionAddress,
-
-    ReadComplete,
-    WriteComplete,
-    DataToCore,
-    ReadEnable,
-    WriteEnable,
-    DataWidth,
-    DataFromCore,
-    DataAddress
+    InstructionAddress
   );
 
 endmodule
